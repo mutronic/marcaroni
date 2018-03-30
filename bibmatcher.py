@@ -268,6 +268,28 @@ def ignore_if_new_record_is_dda_and_better_is_available(marc_record, bib_source_
     return False
 
 
+def update_same_dda_record_if_unambiguous(marc_record, bib_source_of_input, predicate_vectors, output_handler):
+    """
+
+    :param marc_record:
+    :param bib_source_of_input: BibSource
+    :type predicate_vectors: dict[ISBN, PredicateVector]
+    :type output_handler: OutputRecordHandler
+    :rtype: bool
+    """
+    if bib_source_of_input.license != 'dda':
+        return False
+    if len(predicate_vectors) != 1:
+        return False
+    match = list(predicate_vectors.keys())[0]
+    if not predicate_vectors[match].match_is_same_platform:
+        return False
+    if predicate_vectors[match].match_is_dda:
+        output_handler.update(marc_record, match.id)
+        return True
+    return False
+
+
 def mark_as_ambiguous_new_record_is_dda_and_better_is_not_available(marc_record, bib_source_of_input, predicate_vectors,
                                                                     output_handler):
     """
@@ -332,6 +354,7 @@ def update_same_platform_match_if_unambiguous(marc_record, bib_source_of_input, 
 
 RULES = [
     ignore_if_new_record_is_dda_and_better_is_available,
+    update_same_dda_record_if_unambiguous,
     mark_as_ambiguous_new_record_is_dda_and_better_is_not_available,
     add_if_all_matches_are_on_other_platforms,
     update_same_platform_match_if_unambiguous,

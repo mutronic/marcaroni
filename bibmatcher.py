@@ -287,9 +287,54 @@ def mark_as_ambiguous_new_record_is_dda_and_better_is_not_available(marc_record,
     return True
 
 
+def add_if_all_matches_are_on_other_platforms(marc_record, bib_source_of_input, predicate_vectors,
+                                              output_handler):
+    """
+
+    :param marc_record:
+    :param bib_source_of_input: BibSource
+    :type predicate_vectors: dict[ISBN, PredicateVector]
+    :type output_handler: OutputRecordHandler
+    :rtype: bool
+    """
+    for match in predicate_vectors:
+        if predicate_vectors[match].match_is_same_platform:
+            return False
+    output_handler.add(marc_record)
+    return True
+
+
+def update_same_platform_match_if_unambiguous(marc_record, bib_source_of_input, predicate_vectors,
+                                              output_handler):
+    """
+
+    :param marc_record:
+    :param bib_source_of_input: BibSource
+    :type predicate_vectors: dict[ISBN, PredicateVector]
+    :type output_handler: OutputRecordHandler
+    :rtype: bool
+    """
+    matches_on_this_platform = []
+    for match in predicate_vectors:
+        if predicate_vectors[match].match_is_same_platform:
+            matches_on_this_platform.append(match)
+    if len(matches_on_this_platform) <= 0:
+        return False
+    if len(matches_on_this_platform) > 1:
+        output_handler.ambiguous(marc_record, "There are multiple matches on this platform.")
+        return True
+    if predicate_vectors[matches_on_this_platform[0]].match_is_better_license:
+        output_handler.ignore(marc_record)
+        return True
+    output_handler.update(marc_record, matches_on_this_platform[0].id)
+    return True
+
+
 RULES = [
     ignore_if_new_record_is_dda_and_better_is_available,
     mark_as_ambiguous_new_record_is_dda_and_better_is_not_available,
+    add_if_all_matches_are_on_other_platforms,
+    update_same_platform_match_if_unambiguous,
 ]
 
 

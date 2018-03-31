@@ -155,6 +155,11 @@ class OutputRecordHandler:
         self.ddas_to_hide_report_writer = csv.writer(self.ddas_to_hide_report_fp)
         self.ddas_to_hide_report_writer.writerow(('Title', 'Platform', 'BibId'))
 
+        self.add_counter = 0
+        self.update_counter = 0
+        self.ignore_counter = 0
+        self.ambiguous_counter = 0
+
     def __del__(self):
         self.add_file_fp.close()
         self.update_file_fp.close()
@@ -164,12 +169,14 @@ class OutputRecordHandler:
 
     def add(self, marc_rec):
         self.add_file_fp.write(marc_rec.as_marc())
+        self.add_counter += 1
 
     def ambiguous(self, marc_rec, reason):
         self.ambiguous_file_fp.write(marc_rec.as_marc())
         title = marc_rec['245'].value()
         isbn = marc_rec['020'][0].value()
         self.ambiguous_report_file_writer.writerow((title, isbn, reason))
+        self.ambiguous_counter += 1
 
     def update(self, marc_rec, bib_id):
         marc_rec.add_field(Field(
@@ -178,12 +185,20 @@ class OutputRecordHandler:
             subfields=['c', bib_id]
         ))
         self.update_file_fp.write(marc_rec.as_marc())
+        self.update_counter += 1
 
     def ignore(self, marc_rec):
         self.ignore_file_fp.write(marc_rec.as_marc())
+        self.ignore_counter += 1
 
     def report_of_ddas_to_hide(self, title, platform, bib_id):
         self.ddas_to_hide_report_writer.writerow((title, platform, bib_id))
+
+    def print_report(self):
+        print("Number of records to add:         %d" % (self.add_counter,))
+        print("Number of records to update:      %d" % (self.update_counter,))
+        print("Number of records to ignore:      %d" % (self.ignore_counter,))
+        print("Number of records to figure out:  %d" % (self.ambiguous_counter,))
 
 
 def process_input_files(input_files, bib_source_of_input, bibsources, eg_records):
@@ -195,6 +210,13 @@ def process_input_files(input_files, bib_source_of_input, bibsources, eg_records
             reader = MARCReader(handler)
             count = process_input_file(eg_records, reader, output_handler, bib_source_of_input, bibsources)
             print("Record count: " + str(count))
+    if output_handler is not None:
+        output_handler.print_report()
+    print("Matches per Bibsource: \n")
+    for source in sorted(bibsource_match_histogram.keys(), reverse=True,
+                         key=lambda x: bibsource_match_histogram[x]):
+        print("\t%d\t%s: \t%d" % (source, bibsources.get_bib_source_by_id(source).name,
+                                  bibsource_match_histogram[source]))
 
 
 def no_op_filter_predicate(remaining_matches, bib_source_of_inputs, bibsources, marc_record):
@@ -401,6 +423,9 @@ def process_input_file(eg_records, reader, output_handler, bib_source_of_input, 
     return count
 
 
+bibsource_match_histogram = {}
+
+
 def match_marc_record_against_bib_data(eg_records, record):
     # Set up a place to put matching record things.
     matches = set()
@@ -415,6 +440,10 @@ def match_marc_record_against_bib_data(eg_records, record):
                     print('Probably a bad isbn: ' + new_isbn)
                 if new_isbn in eg_records:
                     matches |= set(eg_records[new_isbn])
+    for match in matches:
+        if match.source not in bibsource_match_histogram:
+            bibsource_match_histogram[match.source] = 0
+        bibsource_match_histogram[match.source] += 1
     return matches
 
 

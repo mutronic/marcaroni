@@ -108,21 +108,22 @@ def load_bib_data(bib_data_file_name):
         myreader = csv.DictReader(datafile, delimiter=',')
         next(myreader)  # skip header
         for row in myreader:
-            cleaned = row['value'].strip()
-            isbn = cleaned.split(' ')[0]
-            isbn = isbn.strip('-')
-            isbn = isbn.split('ü')[0]  # Delete me when umlauts are fixed
-            isbn = isbn.split('(')[0]
-            isbn = isbn.split('\\')[0]
-
-            # If ISBN is the wrong length, warn but don't break
-            if len(isbn) != 10 and len(isbn) != 13:
-                # print("We probably have not found a good isbn here: " + cleaned)
-                errors.write(','.join(row.values()))
-                errors.write('\n')
-
-            # Only consider matchable isbns strings that are between 9 and 14 chars.
-            if 8 < len(isbn) < 15:
+#            cleaned = row['value'].strip()
+#            isbn = cleaned.split(' ')[0]
+#            isbn = isbn.strip('-')
+#            isbn = isbn.split('ü')[0]  # Delete me when umlauts are fixed
+#            isbn = isbn.split('(')[0]
+#            isbn = isbn.split('\\')[0]
+#
+#            # If ISBN is the wrong length, warn but don't break
+#            if len(isbn) != 10 and len(isbn) != 13:
+#                # print("We probably have not found a good isbn here: " + cleaned)
+#                errors.write(','.join(row.values()))
+#                errors.write('\n')
+#
+#            # Only consider matchable isbns strings that are between 9 and 14 chars.
+#            if 8 < len(isbn) < 15:
+                isbn = row['isbn']
                 isbn_obj = ISBN(row['id'], row['source'], isbn)
                 if isbn not in eg_records:
                     eg_records[isbn] = []
@@ -154,6 +155,11 @@ class OutputRecordHandler:
         self.ddas_to_hide_report_fp = open(self.ddas_to_hide_report_file_name, "w")
         self.ddas_to_hide_report_writer = csv.writer(self.ddas_to_hide_report_fp)
         self.ddas_to_hide_report_writer.writerow(('Title', 'Platform', 'BibId'))
+
+        self.self_ddas_to_hide_report_file_name = prefix + '_self_ddas_to_hide_report.csv'
+        self.self_ddas_to_hide_report_fp = open(self.self_ddas_to_hide_report_file_name, "w")
+        self.self_ddas_to_hide_report_writer = csv.writer(self.self_ddas_to_hide_report_fp)
+        self.self_ddas_to_hide_report_writer.writerow(('Platform','Title', 'ISBN'))
 
         self.add_counter = 0
         self.update_counter = 0
@@ -194,6 +200,9 @@ class OutputRecordHandler:
     def report_of_ddas_to_hide(self, title, platform, bib_id):
         self.ddas_to_hide_report_writer.writerow((title, platform, bib_id))
 
+    def report_of_self_ddas_to_hide(self, platform, title, isbn):
+        self.self_ddas_to_hide_report_writer.writerow((platform, title, isbn))
+
     def print_report(self):
         print("Number of records to add:         %d" % (self.add_counter,))
         print("Number of records to update:      %d" % (self.update_counter,))
@@ -215,7 +224,7 @@ def process_input_files(input_files, bib_source_of_input, bibsources, eg_records
     print("Matches per Bibsource: \n")
     for source in sorted(bibsource_match_histogram.keys(), reverse=True,
                          key=lambda x: bibsource_match_histogram[x]):
-        print("\t%d\t%s: \t%d" % (source, bibsources.get_bib_source_by_id(source).name,
+        print("\t%s\t%s: \t%d" % (source, bibsources.get_bib_source_by_id(source).name,
                                   bibsource_match_histogram[source]))
 
 
@@ -243,7 +252,7 @@ def generate_report_of_ddas_to_hide(output_handler, matches, bib_source_of_input
     """
     if bib_source_of_input.license == 'dda':
         return
-    dda_matches = [m for m in matches if bibsources.bib_source_by_id(m.source).license == 'dda']
+    dda_matches = [m for m in matches if bibsources.get_bib_source_by_id(m.source).license == 'dda']
     if len(dda_matches) < 1:
         return
     title = marc_record['245'].value()
@@ -253,9 +262,24 @@ def generate_report_of_ddas_to_hide(output_handler, matches, bib_source_of_input
             continue
         output_handler.report_of_ddas_to_hide(title, bib_source.platform, m.id)
 
+def generate_report_of_self_ddas_to_hide(output_handler, matches, bib_source_of_input, bibsources, marc_record):
+    """
+    This function will write out a report of all the DDA records on other platforms that
+    are rendered moot by the current new record not being a DDA and being for the (nominally)
+    same object.
+    """
+    if bib_source_of_input.license != 'dda':
+        return
+    non_dda_matches = [m for m in matches if bibsources.get_bib_source_by_id(m.source).license != 'dda']
+    if len(non_dda_matches) < 1:
+        return
+    title = marc_record['245'].value()
+    isbn = marc_record['020'].value()
+    output_handler.report_of_self_ddas_to_hide(bib_source_of_input.platform, title, isbn)
 
 def handle_special_actions_and_misc_reports(output_handler, matches, bib_source_of_input, bibsources, marc_record):
     generate_report_of_ddas_to_hide(output_handler, matches, bib_source_of_input, bibsources, marc_record)
+    generate_report_of_self_ddas_to_hide(output_handler, matches, bib_source_of_input, bibsources, marc_record)
 
 
 PredicateVector = namedtuple('PredicateVector', ['match_is_dda',
@@ -440,10 +464,14 @@ def match_marc_record_against_bib_data(eg_records, record):
                     print('Probably a bad isbn: ' + new_isbn)
                 if new_isbn in eg_records:
                     matches |= set(eg_records[new_isbn])
+    # FIXME: can we restructure the original matches set to just have bibid, source?
+    matching_ids = set()
     for match in matches:
-        if match.source not in bibsource_match_histogram:
-            bibsource_match_histogram[match.source] = 0
-        bibsource_match_histogram[match.source] += 1
+        matching_ids |= set([(match.id, match.source)])
+    for match in matching_ids:
+        if match[1] not in bibsource_match_histogram:
+            bibsource_match_histogram[match[1]] = 0
+        bibsource_match_histogram[match[1]] += 1
     return matches
 
 

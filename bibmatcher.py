@@ -1,8 +1,8 @@
 #!/usr/local/bin/python3
-# vim: set expandtab:
-# vim: tabstop=4:
-# vim: ai:
-# vim: shiftwidth=4:
+#vim: set expandtab:
+#vim: tabstop=4:
+#vim: ai:
+#vim: shiftwidth=4:
 from pymarc.field import Field
 from pymarc import MARCReader
 import sys
@@ -43,6 +43,7 @@ class ISBN:
         self.source = source
         self.isbn = isbn
 
+Record = namedtuple('Record',['id', 'source'])
 
 class UnknownBibSourceLicense(Exception):
     pass
@@ -102,32 +103,15 @@ def load_bib_data(bib_data_file_name):
     :rtype: dict[str, list[ISBM]]
     """
     eg_records = {}
-    # It's useful for us to see what shitty info is in the database.
-    errors = open('shitty-isbns.txt', 'w')
     with open(bib_data_file_name, 'r') as datafile:
         myreader = csv.DictReader(datafile, delimiter=',')
         next(myreader)  # skip header
         for row in myreader:
-#            cleaned = row['value'].strip()
-#            isbn = cleaned.split(' ')[0]
-#            isbn = isbn.strip('-')
-#            isbn = isbn.split('ü')[0]  # Delete me when umlauts are fixed
-#            isbn = isbn.split('(')[0]
-#            isbn = isbn.split('\\')[0]
-#
-#            # If ISBN is the wrong length, warn but don't break
-#            if len(isbn) != 10 and len(isbn) != 13:
-#                # print("We probably have not found a good isbn here: " + cleaned)
-#                errors.write(','.join(row.values()))
-#                errors.write('\n')
-#
-#            # Only consider matchable isbns strings that are between 9 and 14 chars.
-#            if 8 < len(isbn) < 15:
-                isbn = row['isbn']
-                isbn_obj = ISBN(row['id'], row['source'], isbn)
-                if isbn not in eg_records:
-                    eg_records[isbn] = []
-                eg_records[isbn].append(isbn_obj)
+            isbn = row['isbn']
+            record_obj = Record(row['id'], row['source'])
+            if isbn not in eg_records:
+                eg_records[isbn] = []
+            eg_records[isbn].append(record_obj)
     if len(eg_records) == 0:
         print("ISBN file did not contain valid records.", file=sys.stderr)
         sys.exit(1)
@@ -136,27 +120,29 @@ def load_bib_data(bib_data_file_name):
 
 class OutputRecordHandler:
     def __init__(self, prefix):
+        if not os.path.exists(prefix):
+          os.makedirs(prefix)
         self.prefix = prefix
-        self.add_file_name = prefix + "_add.mrc"
+        self.add_file_name = os.path.join(prefix, "marc_to_add.mrc")
         self.add_file_fp = open(self.add_file_name, "wb")
-        self.update_file_name = prefix + "_update.mrc"
+        self.update_file_name = os.path.join(prefix, "marc_to_update.mrc")
         self.update_file_fp = open(self.update_file_name, "wb")
 
-        self.ambiguous_file_name = prefix + "_ambiguous.mrc"
-        self.ambiguous_report_file_name = prefix + "_ambiguous_report.csv"
+        self.ambiguous_file_name = os.path.join(prefix, "marc_ambiguous.mrc")
         self.ambiguous_file_fp = open(self.ambiguous_file_name, "wb")
+        self.ambiguous_report_file_name = os.path.join(prefix, "report_ambiguous_records.csv")
         self.ambiguous_report_file_fp = open(self.ambiguous_report_file_name, "w")
         self.ambiguous_report_file_writer = csv.writer(self.ambiguous_report_file_fp)
         self.ambiguous_report_file_writer.writerow(('Title', 'ISBN', 'Reason'))
 
-        self.ignore_file_name = prefix + "_ignore.mrc"
+        self.ignore_file_name = os.path.join(prefix, "marc_to_ignore.mrc")
         self.ignore_file_fp = open(self.ignore_file_name, "wb")
-        self.ddas_to_hide_report_file_name = prefix + '_ddas_to_hide_report.csv'
+        self.ddas_to_hide_report_file_name = os.path.join(prefix, 'report_existing_dda_records_to_hide.csv')
         self.ddas_to_hide_report_fp = open(self.ddas_to_hide_report_file_name, "w")
         self.ddas_to_hide_report_writer = csv.writer(self.ddas_to_hide_report_fp)
         self.ddas_to_hide_report_writer.writerow(('Title', 'Platform', 'BibId'))
 
-        self.self_ddas_to_hide_report_file_name = prefix + '_self_ddas_to_hide_report.csv'
+        self.self_ddas_to_hide_report_file_name = os.path.join(prefix, 'report_ddas_from_this_file_to_hide.csv')
         self.self_ddas_to_hide_report_fp = open(self.self_ddas_to_hide_report_file_name, "w")
         self.self_ddas_to_hide_report_writer = csv.writer(self.self_ddas_to_hide_report_fp)
         self.self_ddas_to_hide_report_writer.writerow(('Platform','Title', 'ISBN'))
@@ -180,7 +166,7 @@ class OutputRecordHandler:
     def ambiguous(self, marc_rec, reason):
         self.ambiguous_file_fp.write(marc_rec.as_marc())
         title = marc_rec['245'].value()
-        isbn = marc_rec['020'][0].value()
+        isbn = marc_rec['020'].value()
         self.ambiguous_report_file_writer.writerow((title, isbn, reason))
         self.ambiguous_counter += 1
 
@@ -257,7 +243,7 @@ def generate_report_of_ddas_to_hide(output_handler, matches, bib_source_of_input
         return
     title = marc_record['245'].value()
     for m in dda_matches:
-        bib_source = bibsources.bib_source_by_id(m.source)
+        bib_source = bibsources.get_bib_source_by_id(m.source)
         if bib_source.platform == bib_source_of_input.platform:
             continue
         output_handler.report_of_ddas_to_hide(title, bib_source.platform, m.id)
@@ -389,7 +375,8 @@ def update_same_platform_match_if_unambiguous(marc_record, bib_source_of_input, 
     if len(matches_on_this_platform) <= 0:
         return False
     if len(matches_on_this_platform) > 1:
-        output_handler.ambiguous(marc_record, "There are multiple matches on this platform.")
+        data = '; '.join(m.id for m in matches_on_this_platform)
+        output_handler.ambiguous(marc_record, "There are multiple matches on this platform. " + data)
         return True
     if predicate_vectors[matches_on_this_platform[0]].match_is_better_license:
         output_handler.ignore(marc_record)
@@ -465,13 +452,11 @@ def match_marc_record_against_bib_data(eg_records, record):
                 if new_isbn in eg_records:
                     matches |= set(eg_records[new_isbn])
     # FIXME: can we restructure the original matches set to just have bibid, source?
-    matching_ids = set()
+
     for match in matches:
-        matching_ids |= set([(match.id, match.source)])
-    for match in matching_ids:
-        if match[1] not in bibsource_match_histogram:
-            bibsource_match_histogram[match[1]] = 0
-        bibsource_match_histogram[match[1]] += 1
+        if match.source not in bibsource_match_histogram:
+            bibsource_match_histogram[match.source] = 0
+        bibsource_match_histogram[match.source] += 1
     return matches
 
 
@@ -480,7 +465,7 @@ def parse_cmd_line():
     parser.add_option("-b", "--bib-data", dest="bib_data", default="bib-data.txt",
                       help="CSV file of Bib Data to use")
     parser.add_option("-s", "--bib-source", dest="bib_source", default="bib_sources.csv",
-                      help="CSV file of Bib Soruces to use")
+                      help="CSV file of Bib Sources to use")
     opts, args = parser.parse_args()
 
     if not os.path.exists(opts.bib_data):

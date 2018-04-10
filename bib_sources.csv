@@ -60,7 +60,7 @@ id,name,platform,license
 17,knovel,knovel,purchased
 16,proquest-duke-purchased,Proquest,purchased
 15,Oxford Reference Online,Oxford,purchased
-14,bibs with no 856, 591, no vols,various,purchased
+14,bibs with no 856 591 no vols,various,purchased
 13,Special Collections,local,purchased
 12,unused,none,purchased
 11,Proquest: All Purchases [Purchased],Proquest,purchased
@@ -70,7 +70,7 @@ id,name,platform,license
 7,GOVDOC,local,purchased
 6,OCoLC,various,purchased
 5,MyiLibrary: CRKN Ingram deal [Purchased],Myilibrary,purchased
-4,Pers and e-reses, PEIDB,local,purchased
+4,"Pers and e-reses, PEIDB",local,purchased
 2,System Local,local,purchased
 1,oclc,local,purchased
 

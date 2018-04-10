@@ -37,13 +37,16 @@ def license_comparator(license_of_match, license_of_input):
 # PREPARATION: Import the Evergreen Record data
 # TODO: check the latest update date and prompt to re-load.
 # Current structure: a list of objects.
+
 class ISBN:
     def __init__(self, bib_id, source, isbn):
         self.id = bib_id
         self.source = source
         self.isbn = isbn
 
-Record = namedtuple('Record',['id', 'source'])
+
+Record = namedtuple('Record', ['id', 'source'])
+
 
 class UnknownBibSourceLicense(Exception):
     pass

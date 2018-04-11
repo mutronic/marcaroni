@@ -34,17 +34,6 @@ def license_comparator(license_of_match, license_of_input):
         return False
 
 
-# PREPARATION: Import the Evergreen Record data
-# TODO: check the latest update date and prompt to re-load.
-# Current structure: a list of objects.
-
-class ISBN:
-    def __init__(self, bib_id, source, isbn):
-        self.id = bib_id
-        self.source = source
-        self.isbn = isbn
-
-
 Record = namedtuple('Record', ['id', 'source'])
 
 
@@ -103,18 +92,20 @@ def load_bib_data(bib_data_file_name):
     """
 
     :type bib_data_file_name: str
-    :rtype: dict[str, list[ISBM]]
+    :rtype: dict[str, list[Record]]
     """
+    # Load the Evergreen Record data as a dict of Records
+    # TODO: check the latest update date and prompt to re-load.
     eg_records = {}
     with open(bib_data_file_name, 'r') as datafile:
         myreader = csv.DictReader(datafile, delimiter=',')
         next(myreader)  # skip header
         for row in myreader:
             isbn = row['isbn']
-            record_obj = Record(row['id'], row['source'])
+            record_tuple = Record(row['id'], row['source'])
             if isbn not in eg_records:
                 eg_records[isbn] = []
-            eg_records[isbn].append(record_obj)
+            eg_records[isbn].append(record_tuple)
     if len(eg_records) == 0:
         print("ISBN file did not contain valid records.", file=sys.stderr)
         sys.exit(1)
@@ -290,7 +281,7 @@ def ignore_if_new_record_is_dda_and_better_is_available(marc_record, bib_source_
 
     :param marc_record:
     :param bib_source_of_input: BibSource
-    :type predicate_vectors: Dict[ISBN, PredicateVector]
+    :type predicate_vectors: Dict[Record, PredicateVector]
     :type output_handler: OutputRecordHandler
     :rtype: bool
     """
@@ -308,7 +299,7 @@ def update_same_dda_record_if_unambiguous(marc_record, bib_source_of_input, pred
 
     :param marc_record:
     :param bib_source_of_input: BibSource
-    :type predicate_vectors: dict[ISBN, PredicateVector]
+    :type predicate_vectors: dict[Record, PredicateVector]
     :type output_handler: OutputRecordHandler
     :rtype: bool
     """
@@ -331,7 +322,7 @@ def mark_as_ambiguous_new_record_is_dda_and_better_is_not_available(marc_record,
 
     :param marc_record:
     :param bib_source_of_input: BibSource
-    :type predicate_vectors: dict[ISBN, PredicateVector]
+    :type predicate_vectors: dict[Record, PredicateVector]
     :type output_handler: OutputRecordHandler
     :rtype: bool
     """
@@ -350,7 +341,7 @@ def add_if_all_matches_are_on_other_platforms(marc_record, bib_source_of_input, 
 
     :param marc_record:
     :param bib_source_of_input: BibSource
-    :type predicate_vectors: dict[ISBN, PredicateVector]
+    :type predicate_vectors: dict[Record, PredicateVector]
     :type output_handler: OutputRecordHandler
     :rtype: bool
     """
@@ -367,7 +358,7 @@ def update_same_platform_match_if_unambiguous(marc_record, bib_source_of_input, 
 
     :param marc_record:
     :param bib_source_of_input: BibSource
-    :type predicate_vectors: dict[ISBN, PredicateVector]
+    :type predicate_vectors: dict[Record, PredicateVector]
     :type output_handler: OutputRecordHandler
     :rtype: bool
     """
@@ -400,7 +391,7 @@ RULES = [
 def process_input_file(eg_records, reader, output_handler, bib_source_of_input, bibsources):
     """
 
-    :type eg_records: dict[str, list[ISBN]]
+    :type eg_records: dict[str, list[Record]]
     :type reader: MARCReader
     :type output_handler: OutputRecordHandler
     :type bib_source_of_input: BibSource
@@ -454,7 +445,6 @@ def match_marc_record_against_bib_data(eg_records, record):
                     print('Probably a bad isbn: ' + new_isbn)
                 if new_isbn in eg_records:
                     matches |= set(eg_records[new_isbn])
-    # FIXME: can we restructure the original matches set to just have bibid, source?
 
     for match in matches:
         if match.source not in bibsource_match_histogram:

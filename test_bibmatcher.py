@@ -41,7 +41,7 @@ class MyTestCase(unittest.TestCase):
     def get_vectors(better_licensed=True, same_platform=False, length=3):
         v = {}
         for i in range(length):
-            v[bibmatcher.ISBN(i, 1, '1234567890123')] = bibmatcher.PredicateVector(
+            v[bibmatcher.Record(i, 1)] = bibmatcher.PredicateVector(
                 match_is_better_license=better_licensed,
                 match_is_dda=False,
                 match_is_same_platform=same_platform

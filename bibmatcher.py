@@ -183,11 +183,17 @@ class OutputRecordHandler:
     def report_of_self_ddas_to_hide(self, platform, title, isbn):
         self.self_ddas_to_hide_report_writer.writerow((platform, title, isbn))
 
-    def print_report(self):
+    def print_report(self, bibsources):
         print("Number of records to add:         %d" % (self.add_counter,))
         print("Number of records to update:      %d" % (self.update_counter,))
         print("Number of records to ignore:      %d" % (self.ignore_counter,))
-        print("Number of records to figure out:  %d" % (self.ambiguous_counter,))
+        print("Number of records to figure out:  %d\n" % (self.ambiguous_counter,))
+        print("Matches per Bibsource:")
+        print("\tsource\tname\t\t\tcount(matches)")
+        for source in sorted(bibsource_match_histogram.keys(), reverse=True,
+                             key=lambda x: bibsource_match_histogram[x]):
+            print("\t%s\t%s: \t%d" % (source, bibsources.get_bib_source_by_id(source).name,
+                                      bibsource_match_histogram[source]))
 
 
 def process_input_files(input_files, bib_source_of_input, bibsources, eg_records):
@@ -196,16 +202,11 @@ def process_input_files(input_files, bib_source_of_input, bibsources, eg_records
         if output_handler is None:
             output_handler = OutputRecordHandler(prefix=os.path.splitext(filename)[0])
         with open(filename, 'rb') as handler:
-            reader = MARCReader(handler)
+            reader = MARCReader(handler, to_unicode=True, force_utf8=True)
             count = process_input_file(eg_records, reader, output_handler, bib_source_of_input, bibsources)
             print("Record count: " + str(count))
     if output_handler is not None:
-        output_handler.print_report()
-    print("Matches per Bibsource: \n")
-    for source in sorted(bibsource_match_histogram.keys(), reverse=True,
-                         key=lambda x: bibsource_match_histogram[x]):
-        print("\t%s\t%s: \t%d" % (source, bibsources.get_bib_source_by_id(source).name,
-                                  bibsource_match_histogram[source]))
+        output_handler.print_report(bibsources)
 
 
 def no_op_filter_predicate(remaining_matches, bib_source_of_inputs, bibsources, marc_record):
@@ -482,7 +483,7 @@ def main():
     if bibsource not in bibsources:
         print("Bib source [%s] is not known to Marc-a-roni." % (bibsource,), file=sys.stderr)
         sys.exit(2)
-    print("\nYou have chosen the [%s] Bib Source" % (bibsources.get_bib_source_by_id(bibsource).name,))
+    print("\nYou have chosen the [%s] Bib Source\n" % (bibsources.get_bib_source_by_id(bibsource).name,))
 
     eg_records = load_bib_data(bib_data_file_name)
 

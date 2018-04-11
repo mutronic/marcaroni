@@ -146,12 +146,28 @@ class OutputRecordHandler:
         self.ignore_counter = 0
         self.ambiguous_counter = 0
 
+        self.old_ddas_counter = 0
+        self.self_ddas_counter = 0
+
     def __del__(self):
         self.add_file_fp.close()
         self.update_file_fp.close()
         self.ignore_file_fp.close()
         self.ambiguous_file_fp.close()
         self.ddas_to_hide_report_fp.close()
+        self.self_ddas_to_hide_report_fp.close()
+        if self.add_counter == 0:
+            os.remove(self.add_file_name)
+        if self.update_counter == 0:
+            os.remove(self.update_file_name)
+        if self.ignore_counter == 0:
+            os.remove(self.ignore_file_name)
+        if self.ambiguous_counter == 0:
+            os.remove(self.ambiguous_file_name)
+        if self.old_ddas_counter == 0:
+            os.remove(self.ddas_to_hide_report_file_name)
+        if self.self_ddas_counter == 0:
+            os.remove(self.self_ddas_to_hide_report_file_name)
 
     def add(self, marc_rec):
         self.add_file_fp.write(marc_rec.as_marc())
@@ -179,17 +195,25 @@ class OutputRecordHandler:
 
     def report_of_ddas_to_hide(self, title, platform, bib_id):
         self.ddas_to_hide_report_writer.writerow((title, platform, bib_id))
+        self.old_ddas_counter += 1
 
     def report_of_self_ddas_to_hide(self, platform, title, isbn):
         self.self_ddas_to_hide_report_writer.writerow((platform, title, isbn))
+        self.self_ddas_counter += 1
 
     def print_report(self, bibsources):
         print("Number of records to add:         %d" % (self.add_counter,))
         print("Number of records to update:      %d" % (self.update_counter,))
         print("Number of records to ignore:      %d" % (self.ignore_counter,))
-        print("Number of records to figure out:  %d\n" % (self.ambiguous_counter,))
-        print("Matches per Bibsource:")
-        print("\tsource\tname\t\t\tcount(matches)")
+        print("Number of records to figure out:  %d" % (self.ambiguous_counter,))
+        if (self.old_ddas_counter > 0):
+            print("DDAs that need to be deleted: \t%d" % (self.old_ddas_counter))
+
+        if (self.self_ddas_counter > 0):
+            print("DDAs from this batch that need to be deactivated: %d" % (self.self_ddas_counter))
+
+        print("\nMatches per Bibsource:")
+        print("\tsource\tname\tcount(records)")
         for source in sorted(bibsource_match_histogram.keys(), reverse=True,
                              key=lambda x: bibsource_match_histogram[x]):
             print("\t%s\t%s: \t%d" % (source, bibsources.get_bib_source_by_id(source).name,

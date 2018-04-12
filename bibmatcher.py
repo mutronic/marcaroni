@@ -119,8 +119,12 @@ class OutputRecordHandler:
         self.prefix = prefix
         self.add_file_name = os.path.join(prefix, "marc_to_add.mrc")
         self.add_file_fp = open(self.add_file_name, "wb")
+
         self.update_file_name = os.path.join(prefix, "marc_to_update.mrc")
         self.update_file_fp = open(self.update_file_name, "wb")
+
+        self.exact_match_file_name = os.path.join(prefix, "marc_exact_matches_same_bibsource.mrc")
+        self.exact_match_file_fp = open(self.exact_match_file_name, "wb")
 
         self.ambiguous_file_name = os.path.join(prefix, "marc_ambiguous.mrc")
         self.ambiguous_file_fp = open(self.ambiguous_file_name, "wb")
@@ -129,8 +133,8 @@ class OutputRecordHandler:
         self.ambiguous_report_file_writer = csv.writer(self.ambiguous_report_file_fp)
         self.ambiguous_report_file_writer.writerow(('Title', 'ISBN', 'Reason'))
 
-        self.ignore_file_name = os.path.join(prefix, "marc_to_ignore.mrc")
-        self.ignore_file_fp = open(self.ignore_file_name, "wb")
+        self.ignore_because_have_better_file_name = os.path.join(prefix, "marc_dont_load_we_have_better.mrc")
+        self.ignore_because_have_better_file_fp = open(self.ignore_because_have_better_file_name, "wb")
         self.ddas_to_hide_report_file_name = os.path.join(prefix, 'report_existing_dda_records_to_hide.csv')
         self.ddas_to_hide_report_fp = open(self.ddas_to_hide_report_file_name, "w")
         self.ddas_to_hide_report_writer = csv.writer(self.ddas_to_hide_report_fp)
@@ -143,6 +147,7 @@ class OutputRecordHandler:
 
         self.add_counter = 0
         self.update_counter = 0
+        self.exact_match_counter = 0
         self.ignore_counter = 0
         self.ambiguous_counter = 0
 
@@ -152,7 +157,8 @@ class OutputRecordHandler:
     def __del__(self):
         self.add_file_fp.close()
         self.update_file_fp.close()
-        self.ignore_file_fp.close()
+        self.exact_match_file_fp.close()
+        self.ignore_because_have_better_file_fp.close()
         self.ambiguous_file_fp.close()
         self.ddas_to_hide_report_fp.close()
         self.self_ddas_to_hide_report_fp.close()
@@ -160,8 +166,10 @@ class OutputRecordHandler:
             os.remove(self.add_file_name)
         if self.update_counter == 0:
             os.remove(self.update_file_name)
+        if self.exact_match_counter == 0:
+            os.remove(self.exact_match_file_name)
         if self.ignore_counter == 0:
-            os.remove(self.ignore_file_name)
+            os.remove(self.ignore_because_have_better_file_name)
         if self.ambiguous_counter == 0:
             os.remove(self.ambiguous_file_name)
         if self.old_ddas_counter == 0:
@@ -189,8 +197,17 @@ class OutputRecordHandler:
         self.update_file_fp.write(marc_rec.as_marc())
         self.update_counter += 1
 
+    def exact_match(self, marc_rec, bib_id):
+        marc_rec.add_field(Field(
+            tag='901',
+            indicators=[' ', ' '],
+            subfields=['c', bib_id]
+        ))
+        self.exact_match_file_fp.write(marc_rec.as_marc())
+        self.exact_match_counter += 1
+
     def ignore(self, marc_rec):
-        self.ignore_file_fp.write(marc_rec.as_marc())
+        self.ignore_because_have_better_file_fp.write(marc_rec.as_marc())
         self.ignore_counter += 1
 
     def report_of_ddas_to_hide(self, title, platform, bib_id):
@@ -204,6 +221,7 @@ class OutputRecordHandler:
     def print_report(self, bibsources):
         print("Number of records to add:         %d" % (self.add_counter,))
         print("Number of records to update:      %d" % (self.update_counter,))
+        print("Number of exact matches:          %d" % (self.exact_match_counter,))
         print("Number of records to ignore:      %d" % (self.ignore_counter,))
         print("Number of records to figure out:  %d" % (self.ambiguous_counter,))
         if (self.old_ddas_counter > 0):
@@ -336,7 +354,7 @@ def update_same_dda_record_if_unambiguous(marc_record, bib_source_of_input, pred
     if not predicate_vectors[match].match_is_same_platform:
         return False
     if predicate_vectors[match].match_is_dda:
-        output_handler.update(marc_record, match.id)
+        output_handler.exact_match(marc_record, match.id)
         return True
     return False
 
@@ -356,7 +374,8 @@ def mark_as_ambiguous_new_record_is_dda_and_better_is_not_available(marc_record,
     for match in predicate_vectors:
         if predicate_vectors[match].match_is_better_license:
             return False
-    output_handler.ambiguous(marc_record, "Record is DDA and all other records too.")
+    data = '; '.join(m.id for m in predicate_vectors.keys())
+    output_handler.ambiguous(marc_record, "Record is DDA and all other records too. Consult fall-through. " + data)
     return True
 
 
@@ -397,10 +416,14 @@ def update_same_platform_match_if_unambiguous(marc_record, bib_source_of_input, 
         data = '; '.join(m.id for m in matches_on_this_platform)
         output_handler.ambiguous(marc_record, "There are multiple matches on this platform. " + data)
         return True
-    if predicate_vectors[matches_on_this_platform[0]].match_is_better_license:
+    single_match = matches_on_this_platform[0]
+    if single_match.source == bib_source_of_input.id:
+        output_handler.exact_match(marc_record, single_match.id)
+        return True
+    if predicate_vectors[single_match].match_is_better_license:
         output_handler.ignore(marc_record)
         return True
-    output_handler.update(marc_record, matches_on_this_platform[0].id)
+    output_handler.update(marc_record, single_match.id)
     return True
 
 

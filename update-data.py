@@ -5,8 +5,36 @@
 # vim: shiftwidth=2:
 
 import psycopg2, sys, os.path
+from pathlib import Path
+import configparser
 
-conn = psycopg2.connect("host=XXXX dbname=XXXX user=XXXX password=XXXX")
+
+def read_in_config():
+    # Load config file.
+    configpath = os.path.join(Path.home(), '.marcaroni.ini')
+    config = configparser.ConfigParser()
+    found = config.read(configpath)
+    if len(found) == 0:
+        print("No config files were found. Please place one in your home directory called .marcaroni.ini. See sample file"
+              " for syntax.")
+        sys.exit(1)
+
+    if not config.has_section('database'):
+        print("Database section not found in config file.")
+        sys.exit(1)
+
+    database = config['database']
+
+    for key in ('host', 'dbname', 'user', 'password'):
+        if key not in database:
+            print("Missing key [%s]" % (key,))
+            sys.exit(1)
+
+    return database['host'], database['dbname'], database['user'], database['password']
+
+
+host, dbname, user, password = read_in_config()
+conn = psycopg2.connect(host=host, dbname=dbname, user=user, password=password)
 cur = conn.cursor()
 
 
@@ -35,24 +63,3 @@ for row in cur:
     output.write('\n')
 
 exit()
-
-
-eg_records = []
-# It's useful for us to see what shitty info is in the database.
-
-with open('bib-data.txt','r') as datafile:
-  myreader = csv.DictReader(datafile, delimiter=',')
-  next(myreader) # skip header
-  for row in myreader:
-    cleaned = row['value'].strip()
-    isbn = cleaned.split(' ')[0]
-    isbn = isbn.strip('-')
-    isbn = isbn.split('ü')[0] ## Delete me when umlauts are fixed
-    isbn = isbn.split('(')[0]
-    isbn = isbn.split('\\')[0]
-
-  if len(eg_records) == 0:
-    print("Data file did not contain valid records.")
-
-data_dictionary.close()
-errors.close()

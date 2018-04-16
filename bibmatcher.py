@@ -137,13 +137,13 @@ class OutputRecordHandler:
         self.ignore_because_have_better_file_fp = open(self.ignore_because_have_better_file_name, "wb")
         self.ddas_to_hide_report_file_name = os.path.join(prefix, 'report_existing_dda_records_to_hide.csv')
         self.ddas_to_hide_report_fp = open(self.ddas_to_hide_report_file_name, "w")
-        self.ddas_to_hide_report_writer = csv.writer(self.ddas_to_hide_report_fp)
-        self.ddas_to_hide_report_writer.writerow(('Title', 'Platform', 'BibId'))
+        self.ddas_to_hide_report_writer = csv.writer(self.ddas_to_hide_report_fp, dialect='excel-tab')
+        # self.ddas_to_hide_report_writer.writerow(('Platform', 'Title', 'BibId'))
 
         self.self_ddas_to_hide_report_file_name = os.path.join(prefix, 'report_ddas_from_this_file_to_hide.csv')
         self.self_ddas_to_hide_report_fp = open(self.self_ddas_to_hide_report_file_name, "w")
-        self.self_ddas_to_hide_report_writer = csv.writer(self.self_ddas_to_hide_report_fp)
-        self.self_ddas_to_hide_report_writer.writerow(('Platform','Title', 'ISBN'))
+        self.self_ddas_to_hide_report_writer = csv.writer(self.self_ddas_to_hide_report_fp, dialect='excel-tab')
+        # self.self_ddas_to_hide_report_writer.writerow(('Platform','Title', 'BibId', '856'))
 
         self.add_counter = 0
         self.update_counter = 0
@@ -172,6 +172,7 @@ class OutputRecordHandler:
             os.remove(self.ignore_because_have_better_file_name)
         if self.ambiguous_counter == 0:
             os.remove(self.ambiguous_file_name)
+            os.remove(self.ambiguous_report_file_name)
         if self.old_ddas_counter == 0:
             os.remove(self.ddas_to_hide_report_file_name)
         if self.self_ddas_counter == 0:
@@ -210,12 +211,12 @@ class OutputRecordHandler:
         self.ignore_because_have_better_file_fp.write(marc_rec.as_marc())
         self.ignore_counter += 1
 
-    def report_of_ddas_to_hide(self, title, platform, bib_id):
-        self.ddas_to_hide_report_writer.writerow((title, platform, bib_id))
+    def report_of_ddas_to_hide(self, platform, title, bib_id):
+        self.ddas_to_hide_report_writer.writerow((platform, title, bib_id))
         self.old_ddas_counter += 1
 
     def report_of_self_ddas_to_hide(self, platform, title, isbn):
-        self.self_ddas_to_hide_report_writer.writerow((platform, title, isbn))
+        self.self_ddas_to_hide_report_writer.writerow((platform, title, '', isbn))
         self.self_ddas_counter += 1
 
     def print_report(self, bibsources):
@@ -283,7 +284,7 @@ def generate_report_of_ddas_to_hide(output_handler, matches, bib_source_of_input
         bib_source = bibsources.get_bib_source_by_id(m.source)
         if bib_source.platform == bib_source_of_input.platform:
             continue
-        output_handler.report_of_ddas_to_hide(title, bib_source.platform, m.id)
+        output_handler.report_of_ddas_to_hide(bib_source.platform, title, m.id)
 
 def generate_report_of_self_ddas_to_hide(output_handler, matches, bib_source_of_input, bibsources, marc_record):
     """
@@ -297,8 +298,8 @@ def generate_report_of_self_ddas_to_hide(output_handler, matches, bib_source_of_
     if len(non_dda_matches) < 1:
         return
     title = marc_record['245'].value()
-    isbn = marc_record['020'].value()
-    output_handler.report_of_self_ddas_to_hide(bib_source_of_input.platform, title, isbn)
+    url = marc_record['856']['u']
+    output_handler.report_of_self_ddas_to_hide(bib_source_of_input.platform, title, url)
 
 def handle_special_actions_and_misc_reports(output_handler, matches, bib_source_of_input, bibsources, marc_record):
     generate_report_of_ddas_to_hide(output_handler, matches, bib_source_of_input, bibsources, marc_record)

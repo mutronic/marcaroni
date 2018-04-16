@@ -245,7 +245,7 @@ def process_input_files(input_files, bib_source_of_input, bibsources, eg_records
         if output_handler is None:
             output_handler = OutputRecordHandler(prefix=os.path.splitext(filename)[0])
         with open(filename, 'rb') as handler:
-            reader = MARCReader(handler, to_unicode=True, force_utf8=True)
+            reader = MARCReader(handler, to_unicode=True)
             count = process_input_file(eg_records, reader, output_handler, bib_source_of_input, bibsources)
             print("Record count: " + str(count))
     if output_handler is not None:
@@ -449,6 +449,8 @@ def process_input_file(eg_records, reader, output_handler, bib_source_of_input, 
     """
     count = 0
     for marc_record in reader:
+        # Convert record encoding to UTF-8.
+        marc_record.leader = marc_record.leader[0:9] + 'a' + marc_record.leader[10:]
         count += 1
         matches = match_marc_record_against_bib_data(eg_records, marc_record)
         if len(matches) == 0:

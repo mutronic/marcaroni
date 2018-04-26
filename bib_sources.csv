@@ -4,9 +4,9 @@ id,name,platform,license
 85,Sage: Knowledge Books&Ref [EBA],Sage,eba
 84,Wiley: UBCM [EBA],Wiley,eba
 83,CRCnetBASE-purchased,TandF,purchased
-82,CRCnetBASE-eba,TandF,purchased
-81,Internal E-DDA,Various,dda
-80,CRCnetBASE-dda,TandF,purchased
+82,T&F: netBASE [EBA],TandF,purchased
+81,Internal E-DDA,various,dda
+80,T&F: ENGnetBASE [EBA],TandF,purchased
 79,ASME-sub,unknown,purchased
 78,PrintDDA [dda],local,purchased
 77,PrintDDA,local,dda
@@ -21,6 +21,7 @@ id,name,platform,license
 66,Films On Demand [Subscription],FOD,subscription
 65,credoreference-purchased,Credo,purchased
 63,20120322credo,Credo,purchased
+62,Oxford Scholarship [Purchased],Oxford,purchased
 61,T&F: Eng Hist Docs [Purchased],Enghistdocs,purchased
 60,Sage: Purchased [Purchased],Sage,purchased
 59,ZZZ: Skeletal Records,various,purchased
@@ -30,7 +31,7 @@ id,name,platform,license
 55,ebl-purch,Proquest,purchased
 54,EBSCOhost: DDA from Gobi [DDA],Ebsco,dda
 53,DesLibris-subscription,Deslibris,purchased
-52,Oxford-EBA,Oxford,eba
+52,Oxford Scholarship [EBA],Oxford,eba
 51,EBSCOhost: All purchased [Purchased],Ebsco,purchased
 50,Proquest: DDA from Gobi [DDA],Proquest,dda
 49,201109SuppATIV,AlexanderSt,purchased
@@ -59,7 +60,7 @@ id,name,platform,license
 18,cdlib,cdlib,purchased
 17,knovel,knovel,purchased
 16,proquest-duke-purchased,Proquest,purchased
-15,Oxford Reference Online,Oxford,purchased
+15,Oxford Reference [Purchased],OxfordRef,purchased
 14,bibs with no 856 591 no vols,various,purchased
 13,Special Collections,local,purchased
 12,unused,none,purchased
@@ -73,4 +74,3 @@ id,name,platform,license
 4,"Pers and e-reses, PEIDB",local,purchased
 2,System Local,local,purchased
 1,oclc,local,purchased
-

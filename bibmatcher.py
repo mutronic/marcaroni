@@ -318,6 +318,24 @@ def compute_predicates_for_match(match, match_bib_source, bib_source_of_input, m
         match_is_better_license=license_comparator(match_bib_source.license, bib_source_of_input.license)
     )
 
+def ambiguous_if_matches_on_ambiguous_bibsource(marc_record, bib_source_of_input, predicate_vectors, output_handler):
+    """
+
+    :param marc_record:
+    :param bib_source_of_input: BibSource
+    :type predicate_vectors: Dict[Record, PredicateVector]
+    :type output_handler: OutputRecordHandler
+    :rtype: bool
+    """
+    n = len(predicate_vectors)
+    for matching_record in list(predicate_vectors.keys()):
+        if matching_record.source in ['81', '59', '56', '43', '22', '21', '9', '6']:
+            output_handler.ambiguous(marc_record, "Record matched " + str(n) + " record(s), including at least one "
+                                                                          "ambiguous bibsource. record: " + matching_record.id +" source: " + matching_record.source)
+            return True
+    return False
+
+
 
 def ignore_if_new_record_is_dda_and_better_is_available(marc_record, bib_source_of_input, predicate_vectors,
                                                         output_handler):
@@ -429,6 +447,7 @@ def update_same_platform_match_if_unambiguous(marc_record, bib_source_of_input, 
 
 
 RULES = [
+    ambiguous_if_matches_on_ambiguous_bibsource,
     ignore_if_new_record_is_dda_and_better_is_available,
     update_same_dda_record_if_unambiguous,
     mark_as_ambiguous_new_record_is_dda_and_better_is_not_available,

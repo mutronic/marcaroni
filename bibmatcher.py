@@ -252,6 +252,53 @@ def process_input_files(input_files, bib_source_of_input, bibsources, eg_records
         output_handler.print_report(bibsources)
 
 
+def match_input_files(input_files, bib_source_of_input, eg_records, isbn_column):
+    '''
+
+    :param input_files:
+    :param bib_source_of_input:
+    :param eg_records:
+    :param isbn_column: str
+    :return:
+    '''
+    cols = [int(x) for x in isbn_column.split(',')]
+    for filename in input_files:
+        prefix = os.path.splitext(filename)[0]
+        outfile = open(prefix + '-matched.csv', 'w')
+        out_writer = csv.writer(outfile)
+        with open(filename, 'r') as handler:
+            reader = csv.reader(handler)
+            headerrow = next(reader)
+            headerrow.insert(0,"BibID")
+            out_writer.writerow(headerrow)
+            counter = {'none':0, 'one':0, 'multi':0}
+            for row in reader:
+                matches = set()
+                for isbn_column in cols:
+                    isbn = row[isbn_column].strip('"=')
+    #                print(isbn, type(isbn))
+                    if isbn in eg_records:
+                        matches |= set(eg_records[isbn])
+                same_source_matches = [x for x in matches if x.source == bib_source_of_input.id]
+#                print([(x.id, x.source) for x in same_source_matches])
+                if len(same_source_matches) == 0:
+                    counter['none'] += 1
+                    row.insert(0, "NULL")
+                    out_writer.writerow(row)
+                elif len(same_source_matches) == 1:
+                    counter['one'] += 1
+                    row.insert(0, same_source_matches[0].id)
+                    out_writer.writerow(row)
+                else:
+                    counter['multi'] += 1
+                    note = "multi: " + ','.join([x.id for x in same_source_matches])
+                    row.insert(0, note)
+                    out_writer.writerow(row)
+
+        outfile.close()
+        for key, value in counter.items():
+            print(key + ': ' + str(value))
+
 def no_op_filter_predicate(remaining_matches, bib_source_of_inputs, bibsources, marc_record):
     return remaining_matches
 
@@ -331,7 +378,8 @@ def ambiguous_if_matches_on_ambiguous_bibsource(marc_record, bib_source_of_input
     for matching_record in list(predicate_vectors.keys()):
         if matching_record.source in ['81', '59', '56', '43', '22', '21', '9', '6']:
             output_handler.ambiguous(marc_record, "Record matched " + str(n) + " record(s), including at least one "
-                                                                          "ambiguous bibsource. record: " + matching_record.id +" source: " + matching_record.source)
+                                                                          "ambiguous bibsource. record: " +
+                                     matching_record.id + " source: " + matching_record.source)
             return True
     return False
 
@@ -471,6 +519,10 @@ def process_input_file(eg_records, reader, output_handler, bib_source_of_input, 
         # Convert record encoding to UTF-8.
         marc_record.leader = marc_record.leader[0:9] + 'a' + marc_record.leader[10:]
         count += 1
+        # Ensure record has 856:
+        if not marc_record['856']:
+            print("UH OH! AT LEAST ONE RECORD EXISTS WITH NO 856! at record no " + str(count), file=sys.stderr)
+            sys.exit(1)
         matches = match_marc_record_against_bib_data(eg_records, marc_record)
         if len(matches) == 0:
             output_handler.add(marc_record)
@@ -529,6 +581,8 @@ def parse_cmd_line():
                       help="CSV file of Bib Data to use")
     parser.add_option("-s", "--bib-source", dest="bib_source", default="bib_sources.csv",
                       help="CSV file of Bib Sources to use")
+    parser.add_option("-x", "--excel", action="store_true", dest="excel", default=False,
+                      help="Input an excel file and find matches.")
     opts, args = parser.parse_args()
 
     if not os.path.exists(opts.bib_data):
@@ -538,11 +592,11 @@ def parse_cmd_line():
 
     if len(args) < 1:
         parser.error("Need at least one input file on command line.")
-    return opts.bib_source, opts.bib_data, args
+    return opts.bib_source, opts.bib_data, opts.excel, args
 
 
 def main():
-    bib_source_file_name, bib_data_file_name, input_files = parse_cmd_line()
+    bib_source_file_name, bib_data_file_name, excel, input_files = parse_cmd_line()
 
     # CONFIG:
     bibsources = BibSourceRegistry()
@@ -554,7 +608,13 @@ def main():
         sys.exit(2)
     print("\nYou have chosen the [%s] Bib Source\n" % (bibsources.get_bib_source_by_id(bibsource).name,))
 
+    print("Loading records...")
     eg_records = load_bib_data(bib_data_file_name)
+
+    if excel:
+        isbn_column = input("ISBN column(s), counting from 0: ")
+        match_input_files(input_files, bibsources.get_bib_source_by_id(bibsource), eg_records, isbn_column)
+        return
 
     process_input_files(input_files, bibsources.get_bib_source_by_id(bibsource), bibsources, eg_records)
 

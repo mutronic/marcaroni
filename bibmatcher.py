@@ -10,6 +10,8 @@ import csv
 import os
 import optparse
 from collections import namedtuple
+import re
+import logging
 
 # noinspection PySetFunctionToLiteral
 KNOWN_LICENSES = {
@@ -113,27 +115,27 @@ def load_bib_data(bib_data_file_name):
 
 
 class OutputRecordHandler:
-    def __init__(self, prefix):
+    def __init__(self, prefix, bibsource_prefix):
         if not os.path.exists(prefix):
           os.makedirs(prefix)
         self.prefix = prefix
-        self.add_file_name = os.path.join(prefix, "marc_to_add.mrc")
+        self.add_file_name = os.path.join(prefix, bibsource_prefix + "_to_add.mrc")
         self.add_file_fp = open(self.add_file_name, "wb")
 
-        self.update_file_name = os.path.join(prefix, "marc_to_update.mrc")
+        self.update_file_name = os.path.join(prefix, bibsource_prefix + "_to_update.mrc")
         self.update_file_fp = open(self.update_file_name, "wb")
 
-        self.exact_match_file_name = os.path.join(prefix, "marc_exact_matches_same_bibsource.mrc")
+        self.exact_match_file_name = os.path.join(prefix, bibsource_prefix + "_exact_matches_same_bibsource.mrc")
         self.exact_match_file_fp = open(self.exact_match_file_name, "wb")
 
-        self.ambiguous_file_name = os.path.join(prefix, "marc_ambiguous.mrc")
+        self.ambiguous_file_name = os.path.join(prefix, bibsource_prefix + "_ambiguous.mrc")
         self.ambiguous_file_fp = open(self.ambiguous_file_name, "wb")
         self.ambiguous_report_file_name = os.path.join(prefix, "report_ambiguous_records.csv")
         self.ambiguous_report_file_fp = open(self.ambiguous_report_file_name, "w")
         self.ambiguous_report_file_writer = csv.writer(self.ambiguous_report_file_fp)
         self.ambiguous_report_file_writer.writerow(('Title', 'ISBN', 'Reason'))
 
-        self.ignore_because_have_better_file_name = os.path.join(prefix, "marc_dont_load_we_have_better.mrc")
+        self.ignore_because_have_better_file_name = os.path.join(prefix, bibsource_prefix + "_dont_load_we_have_better.mrc")
         self.ignore_because_have_better_file_fp = open(self.ignore_because_have_better_file_name, "wb")
         self.ddas_to_hide_report_file_name = os.path.join(prefix, 'report_existing_dda_records_to_hide.csv')
         self.ddas_to_hide_report_fp = open(self.ddas_to_hide_report_file_name, "w")
@@ -153,6 +155,12 @@ class OutputRecordHandler:
 
         self.old_ddas_counter = 0
         self.self_ddas_counter = 0
+
+        # Initialize logging
+        log_level = logging.INFO
+        log_format = '  %(message)s'
+        handlers = [logging.FileHandler(os.path.join(prefix, 'marcaroni.log')), logging.StreamHandler()]
+        logging.basicConfig(level = log_level, format = log_format, handlers = handlers)
 
     def __del__(self):
         self.add_file_fp.close()
@@ -219,37 +227,38 @@ class OutputRecordHandler:
         self.self_ddas_to_hide_report_writer.writerow((platform, title, '', isbn))
         self.self_ddas_counter += 1
 
-    def print_report(self, bibsources):
-        print("Number of records to add:         %d" % (self.add_counter,))
-        print("Number of records to update:      %d" % (self.update_counter,))
-        print("Number of exact matches:          %d" % (self.exact_match_counter,))
-        print("Number of records to ignore:      %d" % (self.ignore_counter,))
-        print("Number of records to figure out:  %d" % (self.ambiguous_counter,))
+    def print_report(self, bibsources, count):
+        logging.info("Record count: " + str(count))
+        logging.info("Number of records to add:         %d" % (self.add_counter,))
+        logging.info("Number of records to update:      %d" % (self.update_counter,))
+        logging.info("Number of exact matches:          %d" % (self.exact_match_counter,))
+        logging.info("Number of records to ignore:      %d" % (self.ignore_counter,))
+        logging.info("Number of records to figure out:  %d" % (self.ambiguous_counter,))
         if (self.old_ddas_counter > 0):
-            print("DDAs that need to be deleted: \t%d" % (self.old_ddas_counter))
+            logging.info("DDAs that need to be deleted: \t%d" % (self.old_ddas_counter))
 
         if (self.self_ddas_counter > 0):
-            print("DDAs from this batch that need to be deactivated: %d" % (self.self_ddas_counter))
+            logging.info("DDAs from this batch that need to be deactivated: %d" % (self.self_ddas_counter))
 
-        print("\nMatches per Bibsource:")
-        print("\tsource\tname\tcount(records)")
+        logging.info("\nMatches per Bibsource:")
+        logging.info("\tsource\tname\tcount(records)")
         for source in sorted(bibsource_match_histogram.keys(), reverse=True,
                              key=lambda x: bibsource_match_histogram[x]):
-            print("\t%s\t%s: \t%d" % (source, bibsources.get_bib_source_by_id(source).name,
+            logging.info("\t%s\t%s: \t%d" % (source, bibsources.get_bib_source_by_id(source).name,
                                       bibsource_match_histogram[source]))
 
 
 def process_input_files(input_files, bib_source_of_input, bibsources, eg_records):
     output_handler = None
+    bibsource_prefix = re.sub('[^A-Za-z0-9]','_',bib_source_of_input.name)
     for filename in input_files:
         if output_handler is None:
-            output_handler = OutputRecordHandler(prefix=os.path.splitext(filename)[0])
+            output_handler = OutputRecordHandler(prefix=os.path.splitext(filename)[0], bibsource_prefix=bibsource_prefix)
         with open(filename, 'rb') as handler:
             reader = MARCReader(handler, to_unicode=True)
             count = process_input_file(eg_records, reader, output_handler, bib_source_of_input, bibsources)
-            print("Record count: " + str(count))
-    if output_handler is not None:
-        output_handler.print_report(bibsources)
+            if output_handler is not None:
+                output_handler.print_report(bibsources, count)
 
 
 def match_input_files(input_files, bib_source_of_input, eg_records, isbn_column):

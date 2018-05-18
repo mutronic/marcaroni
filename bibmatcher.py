@@ -261,7 +261,7 @@ def process_input_files(input_files, bib_source_of_input, bibsources, eg_records
                 output_handler.print_report(bibsources, count)
 
 
-def match_input_files(input_files, bib_source_of_input, eg_records, isbn_column):
+def match_input_files(input_files, bib_source_of_input, eg_records, isbn_column, negate):
     '''
 
     :param input_files:
@@ -277,9 +277,16 @@ def match_input_files(input_files, bib_source_of_input, eg_records, isbn_column)
         out_writer = csv.writer(outfile)
         with open(filename, 'r') as handler:
             reader = csv.reader(handler)
+
+            # Prep the output file with the header row.
             headerrow = next(reader)
+            if len(headerrow) < 2:
+                reader = csv.reader(handler, delimiter='\t')
+                headerrow = next(reader)
             headerrow.insert(0,"BibID")
             out_writer.writerow(headerrow)
+
+            bibsource_match_histogram = {}
             counter = {'none':0, 'one':0, 'multi':0}
             for row in reader:
                 matches = set()
@@ -288,25 +295,39 @@ def match_input_files(input_files, bib_source_of_input, eg_records, isbn_column)
     #                print(isbn, type(isbn))
                     if isbn in eg_records:
                         matches |= set(eg_records[isbn])
-                same_source_matches = [x for x in matches if x.source == bib_source_of_input.id]
+                if negate:
+                    desired_source_matches = [x for x in matches if x.source != bib_source_of_input.id]
+
+                else:
+                    desired_source_matches = [x for x in matches if x.source == bib_source_of_input.id]
 #                print([(x.id, x.source) for x in same_source_matches])
-                if len(same_source_matches) == 0:
+                for x in desired_source_matches:
+                    if x.source not in bibsource_match_histogram:
+                        bibsource_match_histogram[x.source] = 0
+                    bibsource_match_histogram[x.source] += 1
+                if len(desired_source_matches) == 0:
                     counter['none'] += 1
                     row.insert(0, "NULL")
                     out_writer.writerow(row)
-                elif len(same_source_matches) == 1:
+                elif len(desired_source_matches) == 1:
                     counter['one'] += 1
-                    row.insert(0, same_source_matches[0].id)
+                    row.insert(0, desired_source_matches[0].id)
                     out_writer.writerow(row)
                 else:
                     counter['multi'] += 1
-                    note = "multi: " + ','.join([x.id for x in same_source_matches])
+                    note = "multi: " + ','.join([x.id for x in desired_source_matches])
                     row.insert(0, note)
                     out_writer.writerow(row)
 
         outfile.close()
         for key, value in counter.items():
             print(key + ': ' + str(value))
+
+        print("\nMatches per Bibsource:")
+        print("\tsource\tcount(records)")
+        for source in sorted(bibsource_match_histogram.keys(), reverse=True,
+                             key=lambda x: bibsource_match_histogram[x]):
+            print("\t%s: \t%d" % (source, bibsource_match_histogram[source]))
 
 def no_op_filter_predicate(remaining_matches, bib_source_of_inputs, bibsources, marc_record):
     return remaining_matches
@@ -592,6 +613,8 @@ def parse_cmd_line():
                       help="CSV file of Bib Sources to use")
     parser.add_option("-x", "--excel", action="store_true", dest="excel", default=False,
                       help="Input an excel file and find matches.")
+    parser.add_option("-n", "--negate", action="store_true", dest="negate", default=False,
+                      help="For an excel report, find matches NOT in a specific bibsource.")
     opts, args = parser.parse_args()
 
     if not os.path.exists(opts.bib_data):
@@ -601,11 +624,11 @@ def parse_cmd_line():
 
     if len(args) < 1:
         parser.error("Need at least one input file on command line.")
-    return opts.bib_source, opts.bib_data, opts.excel, args
+    return opts.bib_source, opts.bib_data, opts.excel, opts.negate, args
 
 
 def main():
-    bib_source_file_name, bib_data_file_name, excel, input_files = parse_cmd_line()
+    bib_source_file_name, bib_data_file_name, excel, negate, input_files = parse_cmd_line()
 
     # CONFIG:
     bibsources = BibSourceRegistry()
@@ -622,7 +645,7 @@ def main():
 
     if excel:
         isbn_column = input("ISBN column(s), counting from 0: ")
-        match_input_files(input_files, bibsources.get_bib_source_by_id(bibsource), eg_records, isbn_column)
+        match_input_files(input_files, bibsources.get_bib_source_by_id(bibsource), eg_records, isbn_column, negate)
         return
 
     process_input_files(input_files, bibsources.get_bib_source_by_id(bibsource), bibsources, eg_records)

@@ -553,6 +553,11 @@ def process_input_file(eg_records, reader, output_handler, bib_source_of_input, 
         if not marc_record['856']:
             print("UH OH! AT LEAST ONE RECORD EXISTS WITH NO 856! at record no " + str(count), file=sys.stderr)
             sys.exit(1)
+        # Ensure record has 020:
+        if not marc_record['020']:
+            print("UH OH! AT LEAST ONE RECORD EXISTS WITH NO 020! at record no " + str(count), file=sys.stderr)
+            output_handler.ambiguous(marc_record, "Record has no ISBN.")
+            continue
         matches = match_marc_record_against_bib_data(eg_records, marc_record)
         if len(matches) == 0:
             output_handler.add(marc_record)

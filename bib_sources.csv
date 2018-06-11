@@ -51,7 +51,7 @@ id,name,platform,license
 35,CABI2005-2007,CABI,purchased
 32,ProquestDiss-purch,Proquest,purchased
 29,intelex20100216,Intelex,purchased
-26,MyiLibrary: CRKN Ingram deal 20100810 [Purchased],Myilibrary,purchased
+26,MyiLibrary: CRKN Ingram deal 20100810 [Purchased],Proquest,subscription
 24,ANSIplatform-sub,ANSI,purchased
 23,ebrary-education,Proquest,purchased
 22,OpenAccess/Free,various,oa
@@ -71,7 +71,7 @@ id,name,platform,license
 8,Periodicals - suppressed,local,purchased
 7,GOVDOC,local,purchased
 6,OCoLC,various,purchased
-5,MyiLibrary: CRKN Ingram deal [Purchased],Myilibrary,purchased
+5,MyiLibrary: CRKN Ingram deal [Purchased],Proquest,subscription
 4,"Pers and e-reses, PEIDB",local,purchased
 2,System Local,local,purchased
 1,oclc,local,purchased

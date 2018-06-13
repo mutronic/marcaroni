@@ -510,7 +510,7 @@ def update_same_platform_match_if_unambiguous(marc_record, bib_source_of_input, 
     if len(matches_on_this_platform) <= 0:
         return False
     if len(matches_on_this_platform) > 1:
-        data = '; '.join(m.id for m in matches_on_this_platform)
+        data = '; '.join(m.id + ' (' + m.source + ')' for m in matches_on_this_platform)
         output_handler.ambiguous(marc_record, "There are multiple matches on this platform. " + data)
         return True
     single_match = matches_on_this_platform[0]

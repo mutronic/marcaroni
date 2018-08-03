@@ -715,7 +715,7 @@ def main():
     print("Loading records from %s" % (bib_data_file_name))
     mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(bib_data_file_name))
     print("File last modified: %s" % (mod_time))
-    if mod_time < (datetime.datetime.now() - datetime.timedelta(minutes=1)):
+    if mod_time < (datetime.datetime.now() - datetime.timedelta(hours=1)):
         input("WARNING! Bib data is really old. Press a key to continue, or Ctrl-D to cancel ")
 
     eg_records = load_bib_data(bib_data_file_name, match_field)

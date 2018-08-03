@@ -94,24 +94,26 @@ class BibSourceRegistry:
         return item in self.bib_source_by_id
 
 
-def load_bib_data(bib_data_file_name):
+def load_bib_data(bib_data_file_name, match_field = '020'):
     """
 
     :type bib_data_file_name: str
     :rtype: dict[str, list[Record]]
     """
-    # Load the Evergreen Record data as a dict of Records
+    # Load the Evergreen Record data as a dict of Records indexed by identifier (i.e. isbn / oclc string)
     # TODO: check the latest update date and prompt to re-load.
     eg_records = {}
     with open(bib_data_file_name, 'r') as datafile:
         myreader = csv.DictReader(datafile, delimiter=',')
         next(myreader)  # skip header
         for row in myreader:
-            isbn = row['isbn']
+            if row['tag'] != match_field:
+                continue
+            identifier = row['identifier']
             record_tuple = Record(row['id'], row['source'])
-            if isbn not in eg_records:
-                eg_records[isbn] = []
-            eg_records[isbn].append(record_tuple)
+            if identifier not in eg_records:
+                eg_records[identifier] = []
+            eg_records[identifier].append(record_tuple)
     if len(eg_records) == 0:
         print("ISBN file did not contain valid records.", file=sys.stderr)
         sys.exit(1)
@@ -565,6 +567,16 @@ RULES = [
     update_same_platform_match_if_unambiguous,
 ]
 
+def get_match_field(bib_source):
+    """
+
+    :param bib_source:
+    :return:
+    """
+    if bib_source.id in ('68', ):
+        return '035'
+    else:
+        return '020'
 
 def process_input_file(eg_records, reader, output_handler, bib_source_of_input, bibsources):
     """
@@ -585,12 +597,12 @@ def process_input_file(eg_records, reader, output_handler, bib_source_of_input, 
         if not marc_record['856']:
             print("UH OH! AT LEAST ONE RECORD EXISTS WITH NO 856! at record no " + str(count), file=sys.stderr)
             sys.exit(1)
-        # Ensure record has 020:
-        if not marc_record['020']:
-            print("UH OH! AT LEAST ONE RECORD EXISTS WITH NO 020! at record no " + str(count), file=sys.stderr)
-            output_handler.ambiguous(marc_record, "Record has no ISBN.")
+        match_field = get_match_field(bib_source_of_input)
+        matches = match_marc_record_against_bib_data(eg_records, marc_record, match_field)
+        if matches == False:
+            print("UH OH! AT LEAST ONE RECORD EXISTS WITH NO %s identifier! at record no %d" % (match_field, count), file=sys.stderr)
+            output_handler.ambiguous(marc_record, "Record has no identifier in %s." % (match_field,))
             continue
-        matches = match_marc_record_against_bib_data(eg_records, marc_record)
         if len(matches) == 0:
             output_handler.add(marc_record)
         else:
@@ -612,7 +624,7 @@ def process_input_file(eg_records, reader, output_handler, bib_source_of_input, 
                     break
 
             if not done:
-                output_handler.ambiguous(marc_record, "One of more match but no rules matched.")
+                output_handler.ambiguous(marc_record, "One or more match but no rules matched.")
 
     return count
 
@@ -620,20 +632,40 @@ def process_input_file(eg_records, reader, output_handler, bib_source_of_input, 
 bibsource_match_histogram = {}
 
 
-def match_marc_record_against_bib_data(eg_records, record):
-    # Set up a place to put matching record things.
+def match_marc_record_against_bib_data(eg_records, record, match_field):
+    """
+
+    :type eg_records: dict[str, list[Record]]
+    :type record: pymarc.Record
+    :type match_field: str
+    :return: bool or set
+    """
+    # Matches will contain matching existing records.
     matches = set()
-    # Get all ISBNs
-    for f in record.get_fields('020'):
+    found_an_identifier = False
+    # Loop over all fields and 'a','z' subfields.
+    for f in record.get_fields(match_field):
         for subfield in ['a', 'z']:
-            if f[subfield]:
-                cleaned = f[subfield].strip()
-                new_isbn = cleaned.split(' ')[0]
-                # We did less cleaning on the incoming ISBNS: this is our chance to fix them!!
-                if len(new_isbn) not in [10, 13]:
-                    print('Probably a bad isbn: ' + new_isbn)
-                if new_isbn in eg_records:
-                    matches |= set(eg_records[new_isbn])
+            for value in f.get_subfields(subfield):
+                if match_field == '020':
+                    cleaned = value.strip()
+                    cleaned = cleaned.split('(')[0]
+                    incoming_identifier = cleaned.split(' ')[0]
+                    # We did less cleaning on the incoming ISBNS: this is our chance to fix them!!
+                    if len(incoming_identifier) not in [10, 13]:
+                        print('Probably a bad isbn: ' + incoming_identifier)
+                elif match_field == '035':
+                    cleaned = value.replace('(',' ')
+                    cleaned = cleaned.replace(')',' ')
+                    cleaned = cleaned.lower()
+                    incoming_identifier = cleaned.strip()
+                # A valid identifier contains numbers.
+                if any(i.isdigit() for i in incoming_identifier) and len(incoming_identifier) > 7:
+                    found_an_identifier = True
+                if incoming_identifier in eg_records:
+                    matches |= set(eg_records[incoming_identifier])
+    if not found_an_identifier:
+        return False
 
     for match in matches:
         if match.source not in bibsource_match_histogram:

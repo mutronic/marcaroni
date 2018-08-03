@@ -12,6 +12,8 @@ import optparse
 from collections import namedtuple
 import re
 import logging
+import isbnlib
+import datetime
 
 # noinspection PySetFunctionToLiteral
 KNOWN_LICENSES = {
@@ -25,6 +27,8 @@ KNOWN_LICENSES = {
 
 def license_comparator(license_of_match, license_of_input):
     """
+    This function tells you if the incoming (input) license is better than the existing
+    because if so, we should update the record. But if not better, then we should leave it.
 
     :param license_of_match:
     :param license_of_input:
@@ -35,7 +39,7 @@ def license_comparator(license_of_match, license_of_input):
     else:
         return False
 
-
+# Rename this? KnownRecord? ExistingRecord?
 Record = namedtuple('Record', ['id', 'source'])
 
 
@@ -137,6 +141,9 @@ class OutputRecordHandler:
 
         self.ignore_because_have_better_file_name = os.path.join(prefix, bibsource_prefix + "_dont_load_we_have_better.mrc")
         self.ignore_because_have_better_file_fp = open(self.ignore_because_have_better_file_name, "wb")
+
+        # Remove these - build a reporting script at some other point. Unlikely to match on record ID (035) across
+        # distributor platcorms.
         self.ddas_to_hide_report_file_name = os.path.join(prefix, 'report_existing_dda_records_to_hide.csv')
         self.ddas_to_hide_report_fp = open(self.ddas_to_hide_report_file_name, "w")
         self.ddas_to_hide_report_writer = csv.writer(self.ddas_to_hide_report_fp, dialect='excel-tab')
@@ -161,6 +168,7 @@ class OutputRecordHandler:
         log_format = '  %(message)s'
         handlers = [logging.FileHandler(os.path.join(prefix, 'marcaroni.log')), logging.StreamHandler()]
         logging.basicConfig(level = log_level, format = log_format, handlers = handlers)
+        logging.info("\nStarting Marcaroni: %s" %(datetime.datetime.now(), ) )
 
     def __del__(self):
         self.add_file_fp.close()
@@ -247,6 +255,9 @@ class OutputRecordHandler:
             logging.info("\t%s\t%s: \t%d" % (source, bibsources.get_bib_source_by_id(source).name,
                                       bibsource_match_histogram[source]))
 
+    def logger(self, message):
+        logging.info(message)
+
 
 def process_input_files(input_files, bib_source_of_input, bibsources, eg_records):
     output_handler = None
@@ -255,6 +266,8 @@ def process_input_files(input_files, bib_source_of_input, bibsources, eg_records
         if output_handler is None:
             output_handler = OutputRecordHandler(prefix=os.path.splitext(filename)[0], bibsource_prefix=bibsource_prefix)
         with open(filename, 'rb') as handler:
+            if output_handler is not None:
+                output_handler.logger("Bibsource: %s"%(bib_source_of_input.name))
             reader = MARCReader(handler, to_unicode=True)
             count = process_input_file(eg_records, reader, output_handler, bib_source_of_input, bibsources)
             if output_handler is not None:
@@ -263,6 +276,7 @@ def process_input_files(input_files, bib_source_of_input, bibsources, eg_records
 
 def match_input_files(input_files, bib_source_of_input, eg_records, isbn_column, negate):
     '''
+    This function is for the Excel matching.
 
     :param input_files:
     :param bib_source_of_input:
@@ -291,10 +305,19 @@ def match_input_files(input_files, bib_source_of_input, eg_records, isbn_column,
             for row in reader:
                 matches = set()
                 for isbn_column in cols:
-                    isbn = row[isbn_column].strip('"=')
-    #                print(isbn, type(isbn))
-                    if isbn in eg_records:
-                        matches |= set(eg_records[isbn])
+                    isbns = []
+                    raw = row[isbn_column].strip('"=')
+                    isbns.append(raw)
+
+                    # Transform to ISBN 10 or 13.
+                    if isbnlib.is_isbn13(raw):
+                        isbns.append(isbnlib.to_isbn10(raw))
+                    elif isbnlib.is_isbn10(raw):
+                        isbns.append(isbnlib.to_isbn13(raw))
+
+                    for isbn in isbns:
+                        if isbn in eg_records:
+                            matches |= set(eg_records[isbn])
                 if negate:
                     desired_source_matches = [x for x in matches if x.source != bib_source_of_input.id]
 
@@ -329,6 +352,7 @@ def match_input_files(input_files, bib_source_of_input, eg_records, isbn_column,
                              key=lambda x: bibsource_match_histogram[x]):
             print("\t%s: \t%d" % (source, bibsource_match_histogram[source]))
 
+
 def no_op_filter_predicate(remaining_matches, bib_source_of_inputs, bibsources, marc_record):
     return remaining_matches
 
@@ -339,6 +363,14 @@ FILTER_PREDICATES = [
 
 
 def filter_matches(matches, bib_source_of_inputs, bibsources, marc_record):
+    """
+    This doesn't do anything yet, but could be used to remove undesired matches.
+    :param matches:
+    :param bib_source_of_inputs:
+    :param bibsources:
+    :param marc_record:
+    :return:
+    """
     remaining_matches = set(matches)
     for filter_predicate in FILTER_PREDICATES:
         remaining_matches = filter_predicate(remaining_matches, bib_source_of_inputs, bibsources, marc_record)
@@ -643,17 +675,25 @@ def main():
     if bibsource not in bibsources:
         print("Bib source [%s] is not known to Marc-a-roni." % (bibsource,), file=sys.stderr)
         sys.exit(2)
-    print("\nYou have chosen the [%s] Bib Source\n" % (bibsources.get_bib_source_by_id(bibsource).name,))
+    bib_source_of_input = bibsources.get_bib_source_by_id(bibsource)
+    print("\nYou have chosen the [%s] Bib Source\n" % (bib_source_of_input.name,))
 
-    print("Loading records...")
-    eg_records = load_bib_data(bib_data_file_name)
+    match_field = get_match_field(bib_source_of_input)
+
+    print("Loading records from %s" % (bib_data_file_name))
+    mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(bib_data_file_name))
+    print("File last modified: %s" % (mod_time))
+    if mod_time < (datetime.datetime.now() - datetime.timedelta(minutes=1)):
+        input("WARNING! Bib data is really old. Press a key to continue, or Ctrl-D to cancel ")
+
+    eg_records = load_bib_data(bib_data_file_name, match_field)
 
     if excel:
         isbn_column = input("ISBN column(s), counting from 0: ")
-        match_input_files(input_files, bibsources.get_bib_source_by_id(bibsource), eg_records, isbn_column, negate)
+        match_input_files(input_files, bib_source_of_input, eg_records, isbn_column, negate)
         return
-
-    process_input_files(input_files, bibsources.get_bib_source_by_id(bibsource), bibsources, eg_records)
+    print("Processing input files.")
+    process_input_files(input_files, bib_source_of_input, bibsources, eg_records)
 
 
 if __name__ == '__main__':

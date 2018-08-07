@@ -573,7 +573,7 @@ def get_match_field(bib_source):
     :param bib_source:
     :return:
     """
-    if bib_source.id in ('68', ):
+    if bib_source.id in ('68', '87', '67', '76', '66'):
         return '035'
     else:
         return '020'

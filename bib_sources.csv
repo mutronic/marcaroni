@@ -3,10 +3,10 @@ id,name,platform,license
 86,ProjectMuse: EBA [EBA],ProjectMuse,eba
 85,Sage: Knowledge Books&Ref [EBA],Sage,eba
 84,Wiley: UBCM [EBA],Wiley,eba
-83,CRCnetBASE-purchased,TandF,purchased
-82,T&F: netBASE [EBA],TandF,purchased
+83,T&F: Spendouts [Purchased],TandF,purchased
+82,T&F: netBASE [EBA],TandF,eba
 81,Internal E-DDA,various,dda
-80,T&F: ENGnetBASE [EBA],TandF,purchased
+80,T&F: eng netbase [EBA],TandF,eba
 79,ASME-sub,unknown,purchased
 78,PrintDDA [dda],local,purchased
 77,PrintDDA,local,dda
@@ -23,7 +23,7 @@ id,name,platform,license
 64,Jstor: Purchased [Purchased],Jstor,purchased
 63,20120322credo,Credo,purchased
 62,Oxford Scholarship [Purchased],Oxford,purchased
-61,T&F: Eng Hist Docs [Purchased],Enghistdocs,purchased
+61,T&F: Eng Hist Docs [Purchased],TandFEnghistdocs,purchased
 60,Sage: Purchased [Purchased],Sage,purchased
 59,ZZZ: Skeletal Records,various,purchased
 58,Wiley: All Purchases [Purchased],Wiley,purchased

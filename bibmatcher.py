@@ -203,7 +203,11 @@ class OutputRecordHandler:
     def ambiguous(self, marc_rec, reason):
         self.ambiguous_file_fp.write(marc_rec.as_marc())
         title = marc_rec['245'].value()
-        isbn = marc_rec['020'].value()
+        isbn = marc_rec['020']
+        if isbn:
+            isbn = isbn.value()
+        else:
+            isbn = 'no isbn'
         self.ambiguous_report_file_writer.writerow((title, isbn, reason))
         self.ambiguous_counter += 1
 
@@ -710,7 +714,10 @@ def main():
     bib_source_of_input = bibsources.get_bib_source_by_id(bibsource)
     print("\nYou have chosen the [%s] Bib Source\n" % (bib_source_of_input.name,))
 
-    match_field = get_match_field(bib_source_of_input)
+    if excel:
+        match_field = '020'
+    else:
+        match_field = get_match_field(bib_source_of_input)
 
     print("Loading records from %s" % (bib_data_file_name))
     mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(bib_data_file_name))

@@ -563,7 +563,7 @@ def update_same_platform_match_if_unambiguous(marc_record, bib_source_of_input, 
 
 
 RULES = [
-    ambiguous_if_matches_on_ambiguous_bibsource,
+    #ambiguous_if_matches_on_ambiguous_bibsource,
     ignore_if_new_record_is_dda_and_better_is_available,
     update_same_dda_record_if_unambiguous,
     mark_as_ambiguous_new_record_is_dda_and_better_is_not_available,
@@ -577,7 +577,7 @@ def get_match_field(bib_source):
     :param bib_source:
     :return:
     """
-    if bib_source.id in ('68', '87', '67', '76', '66'):
+    if bib_source.id in ('68', '87', '67', '76', '66', '1'):
         return '035'
     else:
         return '020'

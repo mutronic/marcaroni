@@ -56,7 +56,7 @@ def dedupe(filename, key):
     with open(filename, 'rb') as handler:
         reader = MARCReader(handler, to_unicode=True, force_utf8=True)
         for record in reader:
-            print(record['245']['a'])
+            #print(record['245']['a'])
             already_found = []
             urls = []
             f856s = record.get_fields('856')

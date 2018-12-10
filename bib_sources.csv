@@ -2,7 +2,7 @@ id,name,platform,license
 87,Kanopy [DDA],Kanopy,dda
 86,ProjectMuse: EBA [EBA],ProjectMuse,eba
 85,Sage: Knowledge Books&Ref [EBA],Sage,eba
-84,Wiley: UBCM [EBA],Wiley,eba
+84,Wiley: UBCM [EBA],OCLC,eba
 83,T&F: Spendouts [Purchased],TandF,purchased
 82,T&F: netBASE [EBA],TandF,eba
 81,Internal E-DDA,various,dda
@@ -17,10 +17,10 @@ id,name,platform,license
 72,duke-purchased,Duke,purchased
 71,Proquest: Academic [Subscription],Proquest,subscription
 70,T&F: CRKN Ingram(?) deal [Purchased],TandF,purchased
-68,EBSCOhost: NA Acad [Subscription],Ebsco,subscription
+68,EBSCOhost: NA Acad [Subscription],OCLC,subscription
 66,Films On Demand [Subscription],FOD,subscription
 65,credoreference-purchased,Credo,purchased
-64,Jstor: Purchased [Purchased],Jstor,purchased
+64,Jstor: Purchased [Purchased],OCLC,purchased
 63,20120322credo,Credo,purchased
 62,Oxford Scholarship [Purchased],Oxford,purchased
 61,T&F: Eng Hist Docs [Purchased],TandFEnghistdocs,purchased
@@ -30,10 +30,10 @@ id,name,platform,license
 57,ebscohost-bsp,Ebsco,purchased
 56,ebl-stl (actually all STL),various,purchased
 55,ebl-purch,Proquest,purchased
-54,EBSCOhost: DDA from Gobi [DDA],Ebsco,dda
+54,EBSCOhost: DDA from Gobi [DDA],OCLC,dda
 53,DesLibris-subscription,Deslibris,subscription
 52,Oxford Scholarship [EBA],Oxford,eba
-51,EBSCOhost: All purchased [Purchased],Ebsco,purchased
+51,EBSCOhost: All purchased [Purchased],OCLC,purchased
 50,Proquest: DDA from Gobi [DDA],Proquest,dda
 49,201109SuppATIV,AlexanderSt,purchased
 48,201107ATIV,AlexanderSt,purchased
@@ -41,12 +41,12 @@ id,name,platform,license
 45,PopUp PEI Public Library,local,purchased
 44,desLibris: PurchasedCRKN,Deslibris,purchased
 43,Hidden DDA,various,dda
-42,Jstor: EBA backfile [EBA],Jstor,eba
+42,Jstor: EBA backfile [EBA],OCLC,eba
 41,20110307alexstpress,AlexanderSt,purchased
 40,Safari-sub,Safari,subscription
-39,ScienceDirect-eba,ScienceDirect,eba
+39,ScienceDirect-eba,OCLC,eba
 38,Cambridge-eba,Cambridge,eba
-37,Jstor: DDA frontfile [DDA],Jstor,dda
+37,Jstor: DDA frontfile [DDA],OCLC,dda
 36,CABI2008-frontfile,CABI,purchased
 35,CABI2005-2007,CABI,purchased
 32,ProquestDiss-purch,Proquest,purchased
@@ -74,4 +74,4 @@ id,name,platform,license
 5,MyiLibrary: CRKN Ingram deal [Purchased],Proquest,subscription
 4,"Pers and e-reses, PEIDB",local,purchased
 2,System Local,local,purchased
-1,oclc,local,purchased
+1,oclc,OCLC,purchased

@@ -37,14 +37,20 @@ host, dbname, user, password = read_in_config()
 conn = psycopg2.connect(host=host, dbname=dbname, user=user, password=password)
 cur = conn.cursor()
 
+#debug
+print('Connected to database.')
 
 output = open('bib-data.txt', 'w')
 output.write('identifier,id,source,tag,subfield\n')
 errors = open('shitty-isbns.txt','w')
 
+#debug
+print('Starting query...')
 #cur.copy_expert("COPY (SELECT bre.id, bre.source, rfr.value FROM biblio.record_entry bre JOIN metabib.real_full_rec rfr ON bre.id = rfr.record WHERE not bre.deleted AND rfr.tag = '020' AND rfr.subfield in ('a','z') and bre.source is not NULL) TO STDOUT WITH CSV HEADER", data_dictionary)
 cur.execute("SELECT bre.id, bre.source, rfr.value, rfr.tag, rfr.subfield FROM biblio.record_entry bre JOIN metabib.real_full_rec rfr ON bre.id = rfr.record WHERE not bre.deleted AND (rfr.tag = '020' OR  rfr.tag = '035') AND (rfr.subfield = 'a' OR rfr.subfield = 'z') and bre.source is not NULL")
 
+#debug
+print('Query finished. Cleaning data...')
 for row in cur:
   identifier = row[2].strip()
   identifier = identifier.strip(',')
@@ -69,5 +75,8 @@ for row in cur:
       continue
   output.write(','.join((str(identifier), str(row[0]), str(row[1]), str(row[3]), str(row[4]))))
   output.write('\n')
+
+#debug
+print('Done.')
 
 exit()

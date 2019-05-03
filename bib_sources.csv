@@ -1,9 +1,9 @@
 id,name,platform,license
+90,Hidden-dda,Safari,dda
 89,SpringerLink: EBA [EBA],Springer,eba
 87,Kanopy [DDA],Kanopy,dda
 86,ProjectMuse: EBA [EBA],ProjectMuse,eba
 85,Sage: Knowledge Books&Ref [EBA],Sage,eba
-84,Wiley: UBCM [EBA],OCLC,eba
 83,T&F: Spendouts [Purchased],TandF,purchased
 82,T&F: netBASE [EBA],TandF,eba
 81,Internal E-DDA,various,dda
@@ -18,20 +18,15 @@ id,name,platform,license
 72,duke-purchased,Duke,purchased
 71,Proquest: Academic [Subscription],Proquest,subscription
 70,T&F: CRKN Ingram(?) deal [Purchased],TandF,purchased
-68,EBSCOhost: NA Acad [Subscription],OCLC,subscription
 66,Films On Demand [Subscription],FOD,subscription
 65,credoreference-purchased,Credo,purchased
-64,Jstor: Purchased [Purchased],OCLC,purchased
-63,20120322credo,Credo,purchased
 62,Oxford Scholarship [Purchased],Oxford,purchased
 61,T&F: Eng Hist Docs [Purchased],TandFEnghistdocs,purchased
 60,Sage: Purchased [Purchased],Sage,purchased
 59,ZZZ: Skeletal Records,various,purchased
 58,Wiley: All Purchases [Purchased],Wiley,purchased
-57,ebscohost-bsp,Ebsco,purchased
-56,ebl-stl (actually all STL),various,purchased
+57,EBSCOhost: Business Source DB,Ebsco,subscription
 55,ebl-purch,Proquest,purchased
-54,EBSCOhost: DDA from Gobi [DDA],OCLC,dda
 53,DesLibris-subscription,Deslibris,subscription
 52,Oxford Scholarship [EBA],Oxford,eba
 51,EBSCOhost: All purchased [Purchased],OCLC,purchased
@@ -42,10 +37,8 @@ id,name,platform,license
 45,PopUp PEI Public Library,local,purchased
 44,desLibris: PurchasedCRKN,Deslibris,purchased
 43,Hidden DDA,various,dda
-42,Jstor: EBA backfile [EBA],OCLC,eba
 41,20110307alexstpress,AlexanderSt,purchased
 40,Safari-sub,Safari,subscription
-39,ScienceDirect-eba,OCLC,eba
 38,Cambridge-eba,Cambridge,eba
 37,Jstor: DDA frontfile [DDA],OCLC,dda
 36,CABI2008-frontfile,CABI,purchased
@@ -54,24 +47,19 @@ id,name,platform,license
 29,intelex20100216,Intelex,purchased
 26,MyiLibrary: CRKN Ingram deal 20100810 [Purchased],Proquest,subscription
 24,ANSIplatform-sub,ANSI,purchased
-23,ebrary-education,Proquest,purchased
 22,OpenAccess/Free,various,oa
-21,Transc but need sorting,various,purchased
 20,SpringerLink [Purchased],Springer,purchased
 19,ScienceDirect-purchased,ScienceDirect,purchased
 18,cdlib,cdlib,purchased
 17,knovel,knovel,purchased
-16,proquest-duke-purchased,Proquest,purchased
 15,Oxford Reference [Purchased],OxfordRef,purchased
 14,bibs with no 856 591 no vols,various,purchased
 13,Special Collections,local,purchased
-12,unused,none,purchased
 11,Proquest: All Purchases [Purchased],Proquest,purchased
 10,Adam Matthew: Various Databases [?],AdamMatthew,purchased
 9,single eBooks-purchased,various,purchased
 8,Periodicals - suppressed,local,purchased
 7,GOVDOC,local,purchased
-6,OCoLC,various,purchased
 5,MyiLibrary: CRKN Ingram deal [Purchased],Proquest,subscription
 4,"Pers and e-reses, PEIDB",local,purchased
 2,System Local,local,purchased

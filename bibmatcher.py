@@ -403,9 +403,8 @@ def generate_report_of_ddas_to_hide(output_handler, matches, bib_source_of_input
 
 def generate_report_of_self_ddas_to_hide(output_handler, matches, bib_source_of_input, bibsources, marc_record):
     """
-    This function will write out a report of all the DDA records on other platforms that
-    are rendered moot by the current new record not being a DDA and being for the (nominally)
-    same object.
+    This function will write out a report of all the records in this batch that we should NOT load
+    because we have another copy in a better profile.
     """
     if bib_source_of_input.license != 'dda':
         return

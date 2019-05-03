@@ -13,7 +13,7 @@ It connects directly to the database of an Evergreen ILS, and assumes the use of
 
 Copy the configuration file, .marcaroni.ini.sample, to your user's home directory as `~/.marcaroni.ini` and edit the values to connect to your Evergreen database.
 
-Somewhere (e.g. also in your home directory) `update-data.py`. This will create a file, `bib-data.txt`, containing all identifiers (MARC fields 020 and 035). This may be large - for a database with ~700,000 records, the file size is ~150MB. The location of this file will be provided as a command-line option to the `bibmatcher.py` script.
+Somewhere (e.g. also in your home directory) run `update-data.py`. This will create a file, `bib-data.txt`, containing all identifiers (MARC fields 020 and 035). This may be large - for a database with ~700,000 records, the file size is ~150MB. The location of this file will be provided as a command-line option to the `bibmatcher.py` script.
 
 Create a file based off bib_sources.csv that contains all the bib sources and their licenses. The location of this file will be provided as a command-line option to the `bibmatcher.py` script.
 

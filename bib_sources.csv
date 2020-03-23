@@ -1,5 +1,6 @@
 id,name,platform,license
-91,AVON,Proquest,subscription
+92,Cambridge: Purchased,Cambridge,purchased
+91,Proquest Video AVON + Nursing [sub],Proquest,subscription
 90,Hidden-dda,Safari,dda
 89,SpringerLink: EBA [EBA],Springer,eba
 87,Kanopy [DDA],Kanopy,dda
@@ -19,6 +20,7 @@ id,name,platform,license
 72,duke-purchased,Duke,purchased
 71,Proquest: Academic [Subscription],Proquest,subscription
 70,T&F: CRKN Ingram(?) deal [Purchased],TandF,purchased
+67,Curio.ca [Subscription],Curio,subscription
 66,Films On Demand [Subscription],FOD,subscription
 65,credoreference-purchased,Credo,purchased
 62,Oxford Scholarship [Purchased],Oxford,purchased

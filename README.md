@@ -2,7 +2,7 @@
 
 ## Requirements
 
-This is a [Python 3](https://www.python.org/) script that relies on the Python standard library, plus the following contributed libraries:
+This is a [Python 3](https://www.python.org/) script for Mac OSX that relies on the Python standard library, plus the following contributed libraries:
 * psycopg2 (`pip install psycopg2-binary`)
 * pymarc (`pip install pymarc`)
 * isbnlib (`pip install isbnlib`)
@@ -13,9 +13,11 @@ It connects directly to the database of an Evergreen ILS, and assumes the use of
 
 Copy the configuration file, .marcaroni.ini.sample, to your user's home directory as `~/.marcaroni.ini` and edit the values to connect to your Evergreen database.
 
-Somewhere (e.g. also in your home directory) run `update-data.py`. This will create a file, `bib-data.txt`, containing all identifiers (MARC fields 020 and 035). This may be large - for a database with ~700,000 records, the file size is ~150MB. The location of this file will be provided as a command-line option to the `bibmatcher.py` script.
+Somewhere (e.g. also in your home directory) run `update-data.py`. This will create a file in that directory, `bib-data.txt`, containing all identifiers (MARC fields 020 and 035). This may be large - for a database with ~700,000 records, the file size is ~150MB. The location of this file will be provided as a command-line option to the `bibmatcher.py` script.
 
 Create a file based off bib_sources.csv that contains all the bib sources and their licenses. The location of this file will be provided as a command-line option to the `bibmatcher.py` script.
+
+Edit or copy the `bib_sources.csv` file to reflect the bibsources used. Each bibsource represents one "collection" and has a license and a platform. This way it is possible to have multiple collections on the same platform, and while the files provided may overlap, we will try to not have multiple records for the same book on the same platform.
 
 ## Run
 

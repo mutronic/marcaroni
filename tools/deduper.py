@@ -78,7 +78,7 @@ def dedupe(filename, key):
 def parse_cmd_line():
     parser = optparse.OptionParser(usage="%prog INPUT_FILE [ ... INPUT_FILE_N ]")
     parser.add_option("-k", "--key", dest="key", default="856",
-                      help="Key to use to dedupe. Options are: 856, 245")
+                      help="Key to use to dedupe. Currently only 856; 245 to be implemented.")
     opts, args = parser.parse_args()
 
     if len(args) < 1:

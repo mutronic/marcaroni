@@ -12,16 +12,16 @@ class MockOutputRecordHandler(bibmatcher.OutputRecordHandler):
     def __del__(self):
         pass
 
-    def add(self, marc_rec):
+    def no_match(self, marc_rec):
         self.calls.append(('add', marc_rec))
 
     def ambiguous(self, marc_rec, reason):
         self.calls.append(('ambiguous', marc_rec, reason))
 
-    def update(self, marc_rec, bib_id):
+    def match_is_worse(self, marc_rec, bib_id):
         self.calls.append(('update', marc_rec, bib_id))
 
-    def ignore(self, marc_rec):
+    def match_is_better(self, marc_rec):
         self.calls.append(('ignore', marc_rec))
 
     def report_of_ddas_to_hide(self, title, platform, bib_id):

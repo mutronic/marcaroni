@@ -24,23 +24,25 @@ KNOWN_LICENSES = {
     'oa': 1,
 }
 
-
-def license_comparator(license_of_match, license_of_input):
+def license_comparator(license_of_existing, license_of_input):
     """
-    This function tells you if the incoming (input) license is better than the existing
-    because if so, we should update the record. But if not better, then we should leave it.
+    This function tells you if the incoming (input) license is better than the existing.
+    If so, we probably want to update the existing record to reflect the better license.
+    In particular, this affects records for purchased items - the perpetual access means
+    that the record should be "upgraded" if it were DDA or subscription.
 
-    :param license_of_match:
+    :param license_of_existing:
     :param license_of_input:
     :return: True if Match is preferred, False if match is equal or lesser
     """
-    if KNOWN_LICENSES[license_of_match] > KNOWN_LICENSES[license_of_input]:
+    if KNOWN_LICENSES[license_of_existing] > KNOWN_LICENSES[license_of_input]:
         return True
     else:
         return False
 
 # Rename this? KnownRecord? ExistingRecord?
 Record = namedtuple('Record', ['id', 'source'])
+
 
 
 class UnknownBibSourceLicense(Exception):
@@ -98,14 +100,14 @@ def load_bib_data(bib_data_file_name, match_field = '020'):
     """
 
     :type bib_data_file_name: str
+    :type match_field: str
     :rtype: dict[str, list[Record]]
     """
     # Load the Evergreen Record data as a dict of Records indexed by identifier (i.e. isbn / oclc string)
-    # TODO: check the latest update date and prompt to re-load.
     eg_records = {}
     with open(bib_data_file_name, 'r') as datafile:
         myreader = csv.DictReader(datafile, delimiter=',')
-        next(myreader)  # skip header
+        next(myreader)  # skip header, which is 'identifier,id,source,tag,subfield'
         for row in myreader:
             if row['tag'] != match_field:
                 continue
@@ -115,7 +117,7 @@ def load_bib_data(bib_data_file_name, match_field = '020'):
                 eg_records[identifier] = []
             eg_records[identifier].append(record_tuple)
     if len(eg_records) == 0:
-        print("ISBN file did not contain valid records.", file=sys.stderr)
+        print("Bib data file did not contain valid records.", file=sys.stderr)
         sys.exit(1)
     return eg_records
 
@@ -125,45 +127,6 @@ class OutputRecordHandler:
         if not os.path.exists(prefix):
           os.makedirs(prefix)
         self.prefix = prefix
-        self.add_file_name = os.path.join(prefix, bibsource_prefix + "_to_add.mrc")
-        self.add_file_fp = open(self.add_file_name, "wb")
-
-        self.update_file_name = os.path.join(prefix, bibsource_prefix + "_to_update.mrc")
-        self.update_file_fp = open(self.update_file_name, "wb")
-
-        self.exact_match_file_name = os.path.join(prefix, bibsource_prefix + "_exact_matches_same_bibsource.mrc")
-        self.exact_match_file_fp = open(self.exact_match_file_name, "wb")
-
-        self.ambiguous_file_name = os.path.join(prefix, bibsource_prefix + "_ambiguous.mrc")
-        self.ambiguous_file_fp = open(self.ambiguous_file_name, "wb")
-        self.ambiguous_report_file_name = os.path.join(prefix, "report_ambiguous_records.csv")
-        self.ambiguous_report_file_fp = open(self.ambiguous_report_file_name, "w")
-        self.ambiguous_report_file_writer = csv.writer(self.ambiguous_report_file_fp)
-        self.ambiguous_report_file_writer.writerow(('Title', 'ISBN', 'Reason'))
-
-        self.ignore_because_have_better_file_name = os.path.join(prefix, bibsource_prefix + "_dont_load_we_have_better.mrc")
-        self.ignore_because_have_better_file_fp = open(self.ignore_because_have_better_file_name, "wb")
-
-        # Remove these - build a reporting script at some other point. Unlikely to match on record ID (035) across
-        # distributor platcorms.
-        self.ddas_to_hide_report_file_name = os.path.join(prefix, 'report_existing_dda_records_to_hide.csv')
-        self.ddas_to_hide_report_fp = open(self.ddas_to_hide_report_file_name, "w")
-        self.ddas_to_hide_report_writer = csv.writer(self.ddas_to_hide_report_fp, dialect='excel-tab')
-        # self.ddas_to_hide_report_writer.writerow(('Platform', 'Title', 'BibId'))
-
-        self.self_ddas_to_hide_report_file_name = os.path.join(prefix, 'report_ddas_from_this_file_to_hide.csv')
-        self.self_ddas_to_hide_report_fp = open(self.self_ddas_to_hide_report_file_name, "w")
-        self.self_ddas_to_hide_report_writer = csv.writer(self.self_ddas_to_hide_report_fp, dialect='excel-tab')
-        # self.self_ddas_to_hide_report_writer.writerow(('Platform','Title', 'BibId', '856'))
-
-        self.add_counter = 0
-        self.update_counter = 0
-        self.exact_match_counter = 0
-        self.ignore_counter = 0
-        self.ambiguous_counter = 0
-
-        self.old_ddas_counter = 0
-        self.self_ddas_counter = 0
 
         # Initialize logging
         log_level = logging.INFO
@@ -172,53 +135,90 @@ class OutputRecordHandler:
         logging.basicConfig(level = log_level, format = log_format, handlers = handlers)
         logging.info("\nStarting Marcaroni: %s" %(datetime.datetime.now(), ) )
 
+        # Output file for incoming records with no match found.
+        self.no_matches_on_platform__file_name = os.path.join(prefix, bibsource_prefix + "_no_matches_on_platform.mrc")
+        self.no_matches_on_platform__file_pointer = open(self.no_matches_on_platform__file_name, "wb")
+        self.records_without_matches_counter = 0
+
+        # Output file for incoming records with one match on the platform, having a worse license.
+        self.match_has_worse_license__file_name = os.path.join(prefix, bibsource_prefix + "_match_has_worse_license.mrc")
+        self.match_has_worse_license__file_pointer = open(self.match_has_worse_license__file_name, "wb")
+        self.match_has_worse_license__counter = 0
+
+        # Output file for incoming records with one match on the platform, having the same bibsource.
+        self.exact_match__file_name = os.path.join(prefix, bibsource_prefix + "_match_has_same_bibsource.mrc")
+        self.exact_match__file_pointer = open(self.exact_match__file_name, "wb")
+        self.exact_match__counter = 0
+
+        # Output file for incoming records with one match on the platform, having a better license.
+        self.match_has_better_license__file_name = os.path.join(prefix, bibsource_prefix + "_match_has_better_license.mrc")
+        self.match_has_better_license__file_pointer = open(self.match_has_better_license__file_name, "wb")
+        self.match_has_better_license__counter = 0
+
+        # Output file for incoming records with multiple matches on the same platform (or are otherwise ambiguous).
+        self.ambiguous__file_name = os.path.join(prefix, bibsource_prefix + "_ambiguous.mrc")
+        self.ambiguous__file_pointer = open(self.ambiguous__file_name, "wb")
+        self.ambiguous_report__file_name = os.path.join(prefix, "report_ambiguous_records.csv")
+        self.ambiguous_report__file_pointer = open(self.ambiguous_report__file_name, "w")
+        self.ambiguous_report__csv_writer = csv.writer(self.ambiguous_report__file_pointer)
+        self.ambiguous_report__csv_writer.writerow(('Title', 'ISBN', 'Reason'))
+        self.ambiguous__counter = 0
+
+        # Remove these - build a reporting script at some other point. Unlikely to match on record ID (035) across
+        # distributor platforms.
+        self.ddas_to_hide_report_file_name = os.path.join(prefix, 'report_existing_dda_records_to_hide.csv')
+        self.ddas_to_hide_report_fp = open(self.ddas_to_hide_report_file_name, "w")
+        self.ddas_to_hide_report_writer = csv.writer(self.ddas_to_hide_report_fp, dialect='excel-tab')
+        # self.ddas_to_hide_report_writer.writerow(('Platform', 'Title', 'BibId'))
+        self.old_ddas_counter = 0
+
+        self.self_ddas_to_hide_report_file_name = os.path.join(prefix, 'report_ddas_from_this_file_to_hide.csv')
+        self.self_ddas_to_hide_report_fp = open(self.self_ddas_to_hide_report_file_name, "w")
+        self.self_ddas_to_hide_report_writer = csv.writer(self.self_ddas_to_hide_report_fp, dialect='excel-tab')
+        # self.self_ddas_to_hide_report_writer.writerow(('Platform','Title', 'BibId', '856'))
+        self.self_ddas_counter = 0
+
+
     def __del__(self):
-        self.add_file_fp.close()
-        self.update_file_fp.close()
-        self.exact_match_file_fp.close()
-        self.ignore_because_have_better_file_fp.close()
-        self.ambiguous_file_fp.close()
+        self.no_matches_on_platform__file_pointer.close()
+        self.match_has_worse_license__file_pointer.close()
+        self.exact_match__file_pointer.close()
+        self.match_has_better_license__file_pointer.close()
+        self.ambiguous__file_pointer.close()
+
+        # Deprecated - I hope.
         self.ddas_to_hide_report_fp.close()
         self.self_ddas_to_hide_report_fp.close()
-        if self.add_counter == 0:
-            os.remove(self.add_file_name)
-        if self.update_counter == 0:
-            os.remove(self.update_file_name)
-        if self.exact_match_counter == 0:
-            os.remove(self.exact_match_file_name)
-        if self.ignore_counter == 0:
-            os.remove(self.ignore_because_have_better_file_name)
-        if self.ambiguous_counter == 0:
-            os.remove(self.ambiguous_file_name)
-            os.remove(self.ambiguous_report_file_name)
+
+        # Delete files that weren't used.
+        if self.records_without_matches_counter == 0:
+            os.remove(self.no_matches_on_platform__file_name)
+        if self.match_has_worse_license__counter == 0:
+            os.remove(self.match_has_worse_license__file_name)
+        if self.exact_match__counter == 0:
+            os.remove(self.exact_match__file_name)
+        if self.match_has_better_license__counter == 0:
+            os.remove(self.match_has_better_license__file_name)
+        if self.ambiguous__counter == 0:
+            os.remove(self.ambiguous__file_name)
+            os.remove(self.ambiguous_report__file_name)
         if self.old_ddas_counter == 0:
             os.remove(self.ddas_to_hide_report_file_name)
         if self.self_ddas_counter == 0:
             os.remove(self.self_ddas_to_hide_report_file_name)
 
-    def add(self, marc_rec):
-        self.add_file_fp.write(marc_rec.as_marc())
-        self.add_counter += 1
+    def no_match(self, marc_rec):
+        self.no_matches_on_platform__file_pointer.write(marc_rec.as_marc())
+        self.records_without_matches_counter += 1
 
-    def ambiguous(self, marc_rec, reason):
-        self.ambiguous_file_fp.write(marc_rec.as_marc())
-        title = marc_rec['245'].value()
-        isbn = marc_rec['020']
-        if isbn:
-            isbn = isbn.value()
-        else:
-            isbn = 'no isbn'
-        self.ambiguous_report_file_writer.writerow((title, isbn, reason))
-        self.ambiguous_counter += 1
-
-    def update(self, marc_rec, bib_id):
+    def match_is_worse(self, marc_rec, bib_id):
         marc_rec.add_field(Field(
             tag='901',
             indicators=[' ', ' '],
             subfields=['c', bib_id]
         ))
-        self.update_file_fp.write(marc_rec.as_marc())
-        self.update_counter += 1
+        self.match_has_worse_license__file_pointer.write(marc_rec.as_marc())
+        self.match_has_worse_license__counter += 1
 
     def exact_match(self, marc_rec, bib_id):
         marc_rec.add_field(Field(
@@ -226,12 +226,23 @@ class OutputRecordHandler:
             indicators=[' ', ' '],
             subfields=['c', bib_id]
         ))
-        self.exact_match_file_fp.write(marc_rec.as_marc())
-        self.exact_match_counter += 1
+        self.exact_match__file_pointer.write(marc_rec.as_marc())
+        self.exact_match__counter += 1
 
-    def ignore(self, marc_rec):
-        self.ignore_because_have_better_file_fp.write(marc_rec.as_marc())
-        self.ignore_counter += 1
+    def match_is_better(self, marc_rec):
+        self.match_has_better_license__file_pointer.write(marc_rec.as_marc())
+        self.match_has_better_license__counter += 1
+
+    def ambiguous(self, marc_rec, reason):
+        self.ambiguous__file_pointer.write(marc_rec.as_marc())
+        title = marc_rec['245'].value()
+        isbn = marc_rec['020']
+        if isbn:
+            isbn = isbn.value()
+        else:
+            isbn = 'no isbn'
+        self.ambiguous_report__csv_writer.writerow((title, isbn, reason))
+        self.ambiguous__counter += 1
 
     def report_of_ddas_to_hide(self, platform, title, bib_id):
         self.ddas_to_hide_report_writer.writerow((platform, title, bib_id))
@@ -241,20 +252,20 @@ class OutputRecordHandler:
         self.self_ddas_to_hide_report_writer.writerow((platform, title, '', isbn))
         self.self_ddas_counter += 1
 
-    def print_report(self, bibsources, count):
-        logging.info("Record count: " + str(count))
-        logging.info("Number of records to add:         %d" % (self.add_counter,))
-        logging.info("Number of records to update:      %d" % (self.update_counter,))
-        logging.info("Number of exact matches:          %d" % (self.exact_match_counter,))
-        logging.info("Number of records to ignore:      %d" % (self.ignore_counter,))
-        logging.info("Number of records to figure out:  %d" % (self.ambiguous_counter,))
+    def print_report(self, bibsources, total_record_count):
+        logging.info("Record count: " + str(total_record_count))
+        logging.info("# not found on this platform:          %d" % (self.records_without_matches_counter,))
+        logging.info("# found same platform, worse license:  %d" % (self.match_has_worse_license__counter,))
+        logging.info("# found same platform, same license:   %d" % (self.exact_match__counter,))
+        logging.info("# found same platform, better license: %d" % (self.match_has_better_license__counter,))
+        logging.info("# ambiguous:                           %d" % (self.ambiguous__counter,))
         if (self.old_ddas_counter > 0):
             logging.info("DDAs that need to be deleted: \t%d" % (self.old_ddas_counter))
 
         if (self.self_ddas_counter > 0):
             logging.info("DDAs from this batch that need to be deactivated: %d" % (self.self_ddas_counter))
 
-        logging.info("\nMatches per Bibsource:")
+        logging.info("\nMatches By Bibsource:")
         logging.info("\tsource\tname\tcount(records)")
         for source in sorted(bibsource_match_histogram.keys(), reverse=True,
                              key=lambda x: bibsource_match_histogram[x]):
@@ -265,7 +276,7 @@ class OutputRecordHandler:
         logging.info(message)
 
 
-def process_input_files(input_files, bib_source_of_input, bibsources, eg_records):
+def process_input_files(input_files, bib_source_of_input, bibsources, eg_records, match_field):
     output_handler = None
     bibsource_prefix = re.sub('[^A-Za-z0-9]','_',bib_source_of_input.name)
     for filename in input_files:
@@ -274,83 +285,113 @@ def process_input_files(input_files, bib_source_of_input, bibsources, eg_records
         with open(filename, 'rb') as handler:
             if output_handler is not None:
                 output_handler.logger("Bibsource: %s"%(bib_source_of_input.name))
-            reader = MARCReader(handler, to_unicode=True)
-            count = process_input_file(eg_records, reader, output_handler, bib_source_of_input, bibsources)
+            reader = MARCReader(handler, to_unicode=True, force_utf8=True)
+            total_record_count = process_input_file(eg_records, reader, output_handler, bib_source_of_input, bibsources, match_field)
             if output_handler is not None:
-                output_handler.print_report(bibsources, count)
+                output_handler.print_report(bibsources, total_record_count)
+
+def extract_identifiers_from_row(row, isbn_columns):
+    cols = [int(x) for x in isbn_columns.split(',')]
+    isbns = set()
+    for isbn_column in cols:
+        raw = row[isbn_column].strip('"=')
+        isbns.add(raw)
+        # Transform to ISBN 10 or 13.
+        if isbnlib.is_isbn13(raw):
+            isbns.add(isbnlib.to_isbn10(raw))
+        elif isbnlib.is_isbn10(raw):
+            isbns.add(isbnlib.to_isbn13(raw))
+    return isbns
 
 
-def match_input_files(input_files, bib_source_of_input, eg_records, isbn_column, negate):
+def determine_other_sources_on_platform(selected_bib_source, all_bib_sources):
+    related_source_ids = set()
+    sources_on_platform = all_bib_sources.bib_source_by_platform[selected_bib_source.platform]
+    for source in sources_on_platform:
+        if source.id != selected_bib_source.id:
+            related_source_ids.add(source.id)
+    return related_source_ids
+
+def match_input_files(input_files, bib_source_of_input, bibsources, eg_records, isbn_columns, negate):
     '''
-    This function is for the Excel matching.
+    This function is for the Excel matching. Spreadsheet must have a header row.
 
     :param input_files:
     :param bib_source_of_input:
+    :param bibsources: BibSourceRegistry
     :param eg_records:
-    :param isbn_column: str
+    :param isbn_columns: str
+    :param negate:
     :return:
     '''
-    cols = [int(x) for x in isbn_column.split(',')]
+
+    other_sources_on_platform = determine_other_sources_on_platform(bib_source_of_input, bibsources)
+
     for filename in input_files:
         prefix = os.path.splitext(filename)[0]
+
+        # Avoiding output handler. Just throw -matched.csv on there. FIXME - use different handler?
         outfile = open(prefix + '-matched.csv', 'w')
         out_writer = csv.writer(outfile)
+
         with open(filename, 'r') as handler:
             reader = csv.reader(handler)
 
-            # Prep the output file with the header row.
-            headerrow = next(reader)
-            if len(headerrow) < 2:
+            # If on first try you get a single column, try again with tab delimiter.
+            first_row = next(reader)
+            if len(first_row) < 2:
                 reader = csv.reader(handler, delimiter='\t')
-                headerrow = next(reader)
-            headerrow.insert(0,"BibID")
-            out_writer.writerow(headerrow)
+                first_row = next(reader)
+
+            # OUTPUT - requires first line.
+            # Add our custom output columns, and write first row of output spreadsheet.
+            # Columns are: Same bibsource, Same platform, Other platforms
+            first_row[0:0] = ['Same bibsource', 'Same platform', 'Other platforms']
+            out_writer.writerow(first_row)
 
             bibsource_match_histogram = {}
-            counter = {'none':0, 'one':0, 'multi':0}
+
             for row in reader:
                 matches = set()
-                for isbn_column in cols:
-                    isbns = []
-                    raw = row[isbn_column].strip('"=')
-                    isbns.append(raw)
 
-                    # Transform to ISBN 10 or 13.
-                    if isbnlib.is_isbn13(raw):
-                        isbns.append(isbnlib.to_isbn10(raw))
-                    elif isbnlib.is_isbn10(raw):
-                        isbns.append(isbnlib.to_isbn13(raw))
+                isbns = extract_identifiers_from_row(row, isbn_columns)
+                for isbn in isbns:
+                    if isbn in eg_records:
+                        matches |= set(eg_records[isbn]) # Union of sets.
 
-                    for isbn in isbns:
-                        if isbn in eg_records:
-                            matches |= set(eg_records[isbn])
-                if negate:
-                    desired_source_matches = [x for x in matches if x.source != bib_source_of_input.id]
-
-                else:
-                    desired_source_matches = [x for x in matches if x.source == bib_source_of_input.id]
-#                print([(x.id, x.source) for x in same_source_matches])
-                for x in desired_source_matches:
+                # Add to histogram.
+                for x in matches:
                     if x.source not in bibsource_match_histogram:
                         bibsource_match_histogram[x.source] = 0
                     bibsource_match_histogram[x.source] += 1
+
+                # sort matches.
+                matches_with_same_bibsource = []
+                matches_with_same_platform = []
+                matches_with_different_platform = []
+                for match in matches:
+                    if match.source == bib_source_of_input.id:
+                        matches_with_same_bibsource.append(match)
+                    elif match.source in other_sources_on_platform:
+                        matches_with_same_platform.append(match)
+                    else:
+                        matches_with_different_platform.append(match)
+
+                # Create printable strings.
+
+
                 if len(desired_source_matches) == 0:
-                    counter['none'] += 1
                     row.insert(0, "NULL")
                     out_writer.writerow(row)
                 elif len(desired_source_matches) == 1:
-                    counter['one'] += 1
                     row.insert(0, desired_source_matches[0].id)
                     out_writer.writerow(row)
                 else:
-                    counter['multi'] += 1
                     note = "multi: " + ','.join([x.id for x in desired_source_matches])
                     row.insert(0, note)
                     out_writer.writerow(row)
 
         outfile.close()
-        for key, value in counter.items():
-            print(key + ': ' + str(value))
 
         print("\nMatches per Bibsource:")
         print("\tsource\tcount(records)")
@@ -359,12 +400,12 @@ def match_input_files(input_files, bib_source_of_input, eg_records, isbn_column,
             print("\t%s: \t%d" % (source, bibsource_match_histogram[source]))
 
 
-def no_op_filter_predicate(remaining_matches, bib_source_of_inputs, bibsources, marc_record):
+def no_op_filter_function(remaining_matches, bib_source_of_inputs, bibsources, marc_record):
     return remaining_matches
 
 
-FILTER_PREDICATES = [
-    no_op_filter_predicate,
+FILTER_FUNCTIONS = [
+    no_op_filter_function,
 ]
 
 
@@ -378,7 +419,7 @@ def filter_matches(matches, bib_source_of_inputs, bibsources, marc_record):
     :return:
     """
     remaining_matches = set(matches)
-    for filter_predicate in FILTER_PREDICATES:
+    for filter_predicate in FILTER_FUNCTIONS:
         remaining_matches = filter_predicate(remaining_matches, bib_source_of_inputs, bibsources, marc_record)
     return remaining_matches, matches - remaining_matches
 
@@ -466,7 +507,27 @@ def ignore_if_new_record_is_dda_and_better_is_available(marc_record, bib_source_
         return False
     for match in predicate_vectors:
         if predicate_vectors[match].match_is_better_license:
-            output_handler.ignore(marc_record)
+            output_handler.match_is_better(marc_record)
+            return True
+    return False
+
+def ignore_depending_on_publisher(marc_record, bib_source_of_input, predicate_vectors,
+                                                        output_handler):
+    """
+
+    :param marc_record:
+    :param bib_source_of_input: BibSource
+    :type predicate_vectors: Dict[Record, PredicateVector]
+    :type output_handler: OutputRecordHandler
+    :rtype: bool
+    """
+    if bib_source_of_input.id != '1':
+        return False
+    pub_tags = ['264', '260']
+    for tag in pub_tags:
+      for f in marc_record.get_fields(tag):
+        if f['b'] & f['b'].startswith('Nova Science'):
+            output_handler.match_is_better(marc_record)
             return True
     return False
 
@@ -526,7 +587,7 @@ def add_if_all_matches_are_on_other_platforms(marc_record, bib_source_of_input, 
     for match in predicate_vectors:
         if predicate_vectors[match].match_is_same_platform:
             return False
-    output_handler.add(marc_record)
+    output_handler.no_match(marc_record)
     return True
 
 
@@ -555,14 +616,15 @@ def update_same_platform_match_if_unambiguous(marc_record, bib_source_of_input, 
         output_handler.exact_match(marc_record, single_match.id)
         return True
     if predicate_vectors[single_match].match_is_better_license:
-        output_handler.ignore(marc_record)
+        output_handler.match_is_better(marc_record)
         return True
-    output_handler.update(marc_record, single_match.id)
+    output_handler.match_is_worse(marc_record, single_match.id)
     return True
 
 
 RULES = [
     #ambiguous_if_matches_on_ambiguous_bibsource,
+    #ignore_depending_on_publisher,
     ignore_if_new_record_is_dda_and_better_is_available,
     update_same_dda_record_if_unambiguous,
     mark_as_ambiguous_new_record_is_dda_and_better_is_not_available,
@@ -576,12 +638,12 @@ def get_match_field(bib_source):
     :param bib_source:
     :return:
     """
-    if bib_source.id in ('68', '87', '67', '76', '66', '1'):
+    if bib_source.id in ('68', '87', '67', '76', '66', '1', '91'):
         return '035'
     else:
         return '020'
 
-def process_input_file(eg_records, reader, output_handler, bib_source_of_input, bibsources):
+def process_input_file(eg_records, reader, output_handler, bib_source_of_input, bibsources, match_field):
     """
 
     :type eg_records: dict[str, list[Record]]
@@ -589,25 +651,29 @@ def process_input_file(eg_records, reader, output_handler, bib_source_of_input, 
     :type output_handler: OutputRecordHandler
     :type bib_source_of_input: BibSource
     :type bibsources: BibSourceRegistry
+    :type match_field: str
     :return: int
     """
-    count = 0
+    records_processed_count = 0
     for marc_record in reader:
-        # Convert record encoding to UTF-8.
+        # Convert record encoding to UTF-8 in leader. TODO: put in marc output handler.
         marc_record.leader = marc_record.leader[0:9] + 'a' + marc_record.leader[10:]
-        count += 1
+        records_processed_count += 1
+
         # Ensure record has 856:
         if not marc_record['856']:
-            print("UH OH! AT LEAST ONE RECORD EXISTS WITH NO 856! at record no " + str(count), file=sys.stderr)
+            print("UH OH! AT LEAST ONE RECORD EXISTS WITH NO 856! at record no " + str(records_processed_count), file=sys.stderr)
             sys.exit(1)
-        match_field = get_match_field(bib_source_of_input)
+
+        # match_field = get_match_field(bib_source_of_input)
         matches = match_marc_record_against_bib_data(eg_records, marc_record, match_field)
+        # Matches is "False" if identifier not found; a set of matches (may be empty) otherwise.
         if matches == False:
-            print("UH OH! AT LEAST ONE RECORD EXISTS WITH NO %s identifier! at record no %d" % (match_field, count), file=sys.stderr)
+            print("UH OH! AT LEAST ONE RECORD EXISTS WITH NO %s identifier! at record no %d" % (match_field, records_processed_count), file=sys.stderr)
             output_handler.ambiguous(marc_record, "Record has no identifier in %s." % (match_field,))
             continue
         if len(matches) == 0:
-            output_handler.add(marc_record)
+            output_handler.no_match(marc_record)
         else:
             remaining_matches, removed_matches = filter_matches(matches, bib_source_of_input, bibsources, marc_record)
             handle_special_actions_and_misc_reports(output_handler, remaining_matches, bib_source_of_input,
@@ -629,7 +695,7 @@ def process_input_file(eg_records, reader, output_handler, bib_source_of_input, 
             if not done:
                 output_handler.ambiguous(marc_record, "One or more match but no rules matched.")
 
-    return count
+    return records_processed_count
 
 
 bibsource_match_histogram = {}
@@ -687,6 +753,8 @@ def parse_cmd_line():
                       help="Input an excel file and find matches.")
     parser.add_option("-n", "--negate", action="store_true", dest="negate", default=False,
                       help="For an excel report, find matches NOT in a specific bibsource.")
+    parser.add_option("-m", "--match-field", action="store_true", dest="match_field", default=False,
+                      help="Marc tag to use as identifier. Options are '020' or '035'. Default depends on bibsource.")
     opts, args = parser.parse_args()
 
     if not os.path.exists(opts.bib_data):
@@ -696,11 +764,11 @@ def parse_cmd_line():
 
     if len(args) < 1:
         parser.error("Need at least one input file on command line.")
-    return opts.bib_source, opts.bib_data, opts.excel, opts.negate, args
+    return opts.bib_source, opts.bib_data, opts.excel, opts.negate, opts.match_field, args
 
 
 def main():
-    bib_source_file_name, bib_data_file_name, excel, negate, input_files = parse_cmd_line()
+    bib_source_file_name, bib_data_file_name, excel, negate, match_field, input_files = parse_cmd_line()
 
     # CONFIG:
     bibsources = BibSourceRegistry()
@@ -713,25 +781,22 @@ def main():
     bib_source_of_input = bibsources.get_bib_source_by_id(bibsource)
     print("\nYou have chosen the [%s] Bib Source\n" % (bib_source_of_input.name,))
 
-    if excel:
-        match_field = '020'
-    else:
-        match_field = get_match_field(bib_source_of_input)
-
     print("Loading records from %s" % (bib_data_file_name))
     mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(bib_data_file_name))
     print("File last modified: %s" % (mod_time))
     if mod_time < (datetime.datetime.now() - datetime.timedelta(hours=1)):
         input("WARNING! Bib data is really old. Press a key to continue, or Ctrl-D to cancel ")
 
+    if not match_field:
+        match_field = get_match_field(bib_source_of_input)
     eg_records = load_bib_data(bib_data_file_name, match_field)
 
     if excel:
-        isbn_column = input("ISBN column(s), counting from 0: ")
-        match_input_files(input_files, bib_source_of_input, eg_records, isbn_column, negate)
+        isbn_columns = input("Identifier (e.g. ISBN) column(s) separated by commas, counting from 0: ")
+        match_input_files(input_files, bib_source_of_input, bibsources, eg_records, isbn_columns, negate)
         return
     print("Processing input files.")
-    process_input_files(input_files, bib_source_of_input, bibsources, eg_records)
+    process_input_files(input_files, bib_source_of_input, bibsources, eg_records, match_field)
 
 
 if __name__ == '__main__':

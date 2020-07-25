@@ -4,41 +4,10 @@
 # vim: ai:
 # vim: shiftwidth=2:
 
-import psycopg2, sys, os.path
-from pathlib import Path
-import configparser
+from marcaroni import db
 
-
-def read_in_config():
-    # Load config file.
-    configpath = os.path.join(Path.home(), '.marcaroni.ini')
-    config = configparser.ConfigParser()
-    found = config.read(configpath)
-    if len(found) == 0:
-        print("No config files were found. Please place one in your home directory called .marcaroni.ini. See sample file"
-              " for syntax.")
-        sys.exit(1)
-
-    if not config.has_section('database'):
-        print("Database section not found in config file.")
-        sys.exit(1)
-
-    database = config['database']
-
-    for key in ('host', 'dbname', 'user', 'password'):
-        if key not in database:
-            print("Missing key [%s]" % (key,))
-            sys.exit(1)
-
-    return database['host'], database['dbname'], database['user'], database['password']
-
-
-host, dbname, user, password = read_in_config()
-conn = psycopg2.connect(host=host, dbname=dbname, user=user, password=password)
+conn = db.connect()
 cur = conn.cursor()
-
-#debug
-print('Connected to database.')
 
 output = open('bib-data.txt', 'w')
 output.write('identifier,id,source,tag,subfield\n')

@@ -4,6 +4,9 @@
 #vim: ai:
 #vim: shiftwidth=4:
 
+##
+# Given a MARC file,
+
 from pymarc.field import Field
 from pymarc import MARCReader
 import optparse
@@ -58,12 +61,22 @@ def dedupe(filename, key):
         for record in reader:
             #print(record['245']['a'])
             already_found = []
-            urls = []
-            f856s = record.get_fields('856')
-            for f in f856s:
-                if f.indicator1 == '4' and f.indicator2 == '0':
-                    urls.append(f['u'])
-                    already_found.append(f['u'] in registry)
+            found_values = []
+            id_fields = record.get_fields(key)
+            if key == '856':
+                for f in id_fields:
+                    if f.indicator1 == '4' and f.indicator2 == '0':
+                        found_values.append(f['u'])
+                        already_found.append(f['u'] in registry)
+            if key == '001':
+                for f in id_fields:
+                        found_values.append(f.value())
+                        already_found.append(f.value() in registry)
+            if key == '245':
+                for f in id_fields:
+                        found_values.append(f['a'] + f['b'])
+                        already_found.append((f['a'] + f['b']) in registry)
+
             if all(already_found):
                 output_handler.dupe(record)
             elif any(already_found):
@@ -71,14 +84,14 @@ def dedupe(filename, key):
                 output_handler.unsure(record)
             else:
                 output_handler.deduped(record)
-                registry |= set(urls)
+                registry |= set(found_values)
         output_handler.write_report()
 
 
 def parse_cmd_line():
     parser = optparse.OptionParser(usage="%prog INPUT_FILE [ ... INPUT_FILE_N ]")
     parser.add_option("-k", "--key", dest="key", default="856",
-                      help="Key to use to dedupe. Currently only 856; 245 to be implemented.")
+                      help="Key to use to dedupe - available values 856 [def], 001, 245.")
     opts, args = parser.parse_args()
 
     if len(args) < 1:

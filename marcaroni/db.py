@@ -33,6 +33,11 @@ def read_in_config():
 
 def connect():
     host, dbname, user, password = read_in_config()
-    conn = psycopg2.connect(host=host, dbname=dbname, user=user, password=password)
-    print('Connected to the database.')
-    return conn
+    try:
+        conn = psycopg2.connect(host=host, dbname=dbname, user=user, password=password, connect_timeout = 10)
+        print('Connected to the database.')
+    except Exception as e:
+        print("Error trying to connect to database. ", e)
+        exit(1)
+    else:
+        return conn

@@ -5,3 +5,4 @@ shitty-isbns.txt
 *.pyc
 */.DS_Store
 .DS_Store
+conf/.marcaroni.ini

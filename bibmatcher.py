@@ -146,7 +146,7 @@ class OutputRecordHandler:
         self.match_has_worse_license__counter = 0
 
         # Output file for incoming records with one match on the platform, having the same bibsource.
-        self.exact_match__file_name = os.path.join(prefix, bibsource_prefix + "_match_has_same_bibsource.mrc")
+        self.exact_match__file_name = os.path.join(prefix, bibsource_prefix + "_exact_match_same_bibsource.mrc")
         self.exact_match__file_pointer = open(self.exact_match__file_name, "wb")
         self.exact_match__counter = 0
 
@@ -380,14 +380,15 @@ def match_input_files(input_files, bib_source_of_input, bibsources, eg_records, 
                 # Create printable strings.
 
 
-                if len(desired_source_matches) == 0:
+                if len(matches_with_same_bibsource) == 0:
                     row.insert(0, "NULL")
                     out_writer.writerow(row)
-                elif len(desired_source_matches) == 1:
-                    row.insert(0, desired_source_matches[0].id)
+                elif len(matches_with_same_bibsource) == 1:
+                    row.insert(0, matches_with_same_bibsource[0].id)
                     out_writer.writerow(row)
                 else:
-                    note = "multi: " + ','.join([x.id for x in desired_source_matches])
+                    note = "multi: " + ','.join([x.id for x in matches_with_same_bibsource])
+                    print(row)
                     row.insert(0, note)
                     out_writer.writerow(row)
 

@@ -6,3 +6,4 @@ shitty-isbns.txt
 */.DS_Store
 .DS_Store
 conf/.marcaroni.ini
+conf/.marcaroni.test.ini

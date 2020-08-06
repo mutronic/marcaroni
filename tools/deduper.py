@@ -29,7 +29,7 @@ class OutputHandler:
         self.dupes_fp.close()
         self.unsure_fp.close()
         if self.count_dupes == 0:
-            os.remove(self.deduped_filename)
+            os.remove(self.duplicates_filename)
         if self.count_unsure == 0:
             os.remove(self.unsure_filename)
 

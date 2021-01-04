@@ -164,8 +164,7 @@ class OutputRecordHandler:
         self.ambiguous_report__csv_writer.writerow(('Title', 'ISBN', 'Reason'))
         self.ambiguous__counter = 0
 
-        # Remove these - build a reporting script at some other point. Unlikely to match on record ID (
-        ) across
+        # Remove these - build a reporting script at some other point. Unlikely to match on record ID (035) across
         # distributor platforms.
         self.ddas_to_hide_report_file_name = os.path.join(prefix, 'report_existing_dda_records_to_hide.csv')
         self.ddas_to_hide_report_fp = open(self.ddas_to_hide_report_file_name, "w")

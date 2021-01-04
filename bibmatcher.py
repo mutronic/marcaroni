@@ -103,7 +103,8 @@ def load_bib_data(bib_data_file_name, match_field = '020'):
     :type match_field: str
     :rtype: dict[str, list[Record]]
     """
-    # Load the Evergreen Record data as a dict of Records indexed by identifier (i.e. isbn / oclc string)
+    # Load the Evergreen Record data. Makes a dictionary keyed by  identifier (i.e. isbn or 035 string).
+    # Each value in the dictionary is a list of Records.
     eg_records = {}
     with open(bib_data_file_name, 'r') as datafile:
         myreader = csv.DictReader(datafile, delimiter=',')
@@ -639,7 +640,7 @@ def get_match_field(bib_source):
     :param bib_source:
     :return:
     """
-    if bib_source.id in ('68', '87', '67', '76', '66', '1', '91', '93'):
+    if bib_source.id in ('68', '87', '67', '76', '66', '1', '91', '93', '41'):
         return '035'
     else:
         return '020'
@@ -745,13 +746,15 @@ def match_marc_record_against_bib_data(eg_records, record, match_field):
 
 
 def parse_cmd_line():
-    parser = optparse.OptionParser(usage="%prog INPUT_FILE [ ... INPUT_FILE_N ]")
-    parser.add_option("-b", "--bib-data", dest="bib_data", default="bib-data.txt",
+    parser = optparse.OptionParser(usage="%prog [options] INPUT_FILE [ ... INPUT_FILE_N ]")
+    parser.add_option("-d", "--bib-data", dest="bib_data", default="bib-data.txt",
                       help="CSV file of Bib Data to use")
-    parser.add_option("-s", "--bib-source", dest="bib_source", default="bib_sources.csv",
-                      help="CSV file of Bib Sources to use")
+    parser.add_option("--bib-source-file", dest="bib_source_file", default=os.path.join(os.path.dirname(__file__), 'conf', 'bib_sources.csv'),
+                      help="CSV file of Bib Sources to use. [default: %default]")
+    parser.add_option("-s", "--bib-source", dest="bib_source",
+                      help="Numerical id of bib source for this batch. If empty, will prompt for this.")
     parser.add_option("-x", "--excel", action="store_true", dest="excel", default=False,
-                      help="Input an excel file and find matches.")
+                      help="Instead of a .mrc file, the input is a CSV file. Output will be a modified CSV file..")
     parser.add_option("-n", "--negate", action="store_true", dest="negate", default=False,
                       help="For an excel report, find matches NOT in a specific bibsource.")
     parser.add_option("-m", "--match-field", action="store_true", dest="match_field", default=False,
@@ -760,26 +763,27 @@ def parse_cmd_line():
 
     if not os.path.exists(opts.bib_data):
         parser.error("Bib data file [%s] not found." % (opts.bib_data,))
-    if not os.path.exists(opts.bib_source):
+    if not os.path.exists(opts.bib_source_file):
         parser.error("Bib source file [%s] not found." % (opts.bib_source,))
 
     if len(args) < 1:
         parser.error("Need at least one input file on command line.")
-    return opts.bib_source, opts.bib_data, opts.excel, opts.negate, opts.match_field, args
+    return opts.bib_source_file, opts.bib_source, opts.bib_data, opts.excel, opts.negate, opts.match_field, args
 
 
 def main():
-    bib_source_file_name, bib_data_file_name, excel, negate, match_field, input_files = parse_cmd_line()
+    bib_source_file_name, bib_source, bib_data_file_name, excel, negate, match_field, input_files = parse_cmd_line()
 
     # CONFIG:
     bibsources = BibSourceRegistry()
     bibsources.load_from_file(bib_source_file_name)
-    bibsource = input("Please enter the number of the bibsource:").strip()
+    if not bib_source:
+        bib_source = input("Please enter the number of the bibsource:").strip()
 
-    if bibsource not in bibsources:
-        print("Bib source [%s] is not known to Marc-a-roni." % (bibsource,), file=sys.stderr)
+    if bib_source not in bibsources:
+        print("Bib source [%s] is not known to Marc-a-roni." % (bib_source,), file=sys.stderr)
         sys.exit(2)
-    bib_source_of_input = bibsources.get_bib_source_by_id(bibsource)
+    bib_source_of_input = bibsources.get_bib_source_by_id(bib_source)
     print("\nYou have chosen the [%s] Bib Source\n" % (bib_source_of_input.name,))
 
     print("Loading records from %s" % (bib_data_file_name))

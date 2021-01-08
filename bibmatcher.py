@@ -645,6 +645,7 @@ def extract_identifiers(record, match_field):
                 elif match_field == '035':
                     cleaned = value.replace('(',' ')
                     cleaned = cleaned.replace(')',' ')
+                    cleaned = cleaned.replace('-',' ')
                     cleaned = cleaned.lower()
                     incoming_identifier = cleaned.strip()
                 # A valid identifier contains numbers.

@@ -3,124 +3,21 @@
 #vim: tabstop=4:
 #vim: ai:
 #vim: shiftwidth=4:
-from pymarc.field import Field
-from pymarc import MARCReader
 import sys
 import csv
 import os
 import optparse
 from collections import namedtuple
+import datetime
 import re
 import logging
+
+from pymarc.field import Field
+from pymarc import MARCReader
 import isbnlib
-import datetime
 
-# noinspection PySetFunctionToLiteral
-KNOWN_LICENSES = {
-    'dda': 0,
-    'eba': 1,
-    'subscription': 2,
-    'purchased': 3,
-    'oa': 1,
-}
-
-def license_comparator(license_of_existing, license_of_input):
-    """
-    This function tells you if the incoming (input) license is better than the existing.
-    If so, we probably want to update the existing record to reflect the better license.
-    In particular, this affects records for purchased items - the perpetual access means
-    that the record should be "upgraded" if it were DDA or subscription.
-
-    :param license_of_existing:
-    :param license_of_input:
-    :return: True if Match is preferred, False if match is equal or lesser
-    """
-    if KNOWN_LICENSES[license_of_existing] > KNOWN_LICENSES[license_of_input]:
-        return True
-    else:
-        return False
-
-# Rename this? KnownRecord? ExistingRecord?
-Record = namedtuple('Record', ['id', 'source'])
-
-
-
-class UnknownBibSourceLicense(Exception):
-    pass
-
-
-class BibSource:
-    def __init__(self, bib_source_id, name, platform, bib_license):
-        if bib_license not in KNOWN_LICENSES:
-            raise UnknownBibSourceLicense("Bib Source License [%s] is not known" % (bib_license,))
-        self.id = bib_source_id
-        self.name = name
-        self.platform = platform
-        self.license = bib_license
-
-
-class DuplicateBibSource(Exception):
-    pass
-
-
-class BibSourceRegistry:
-    def __init__(self):
-        self.bib_source_by_id = {}  # dict[str] = BibSource
-        self.bib_source_by_platform = {}  # dict[str] = list[BibSource]
-
-    def _add_bib_source(self, bib_source):
-        """Add a Bib Source to the registry.
-
-        :type bib_source: BibSource
-        """
-        if bib_source.id in self.bib_source_by_id:
-            raise DuplicateBibSource("Bib Source [%s] is duplicated" % (bib_source.id,))
-        self.bib_source_by_id[bib_source.id] = bib_source
-        if bib_source.platform not in self.bib_source_by_platform:
-            self.bib_source_by_platform[bib_source.platform] = []
-        self.bib_source_by_platform[bib_source.platform].append(bib_source)
-
-    def load_from_file(self, filename):
-        with open(filename, "r") as in_fp:
-            r = csv.DictReader(in_fp)
-            for row in r:
-                self._add_bib_source(BibSource(bib_source_id=row['id'].strip(),
-                                               name=row['name'].strip(),
-                                               platform=row['platform'].strip(),
-                                               bib_license=row['license'].strip()))
-
-    def get_bib_source_by_id(self, bib_source_id):
-        return self.bib_source_by_id[bib_source_id]
-
-    def __contains__(self, item):
-        return item in self.bib_source_by_id
-
-
-def load_bib_data(bib_data_file_name, match_field = '020'):
-    """
-
-    :type bib_data_file_name: str
-    :type match_field: str
-    :rtype: dict[str, list[Record]]
-    """
-    # Load the Evergreen Record data. Makes a dictionary keyed by  identifier (i.e. isbn or 035 string).
-    # Each value in the dictionary is a list of Records.
-    eg_records = {}
-    with open(bib_data_file_name, 'r') as datafile:
-        myreader = csv.DictReader(datafile, delimiter=',')
-        next(myreader)  # skip header, which is 'identifier,id,source,tag,subfield'
-        for row in myreader:
-            if row['tag'] != match_field:
-                continue
-            identifier = row['identifier']
-            record_tuple = Record(row['id'], row['source'])
-            if identifier not in eg_records:
-                eg_records[identifier] = []
-            eg_records[identifier].append(record_tuple)
-    if len(eg_records) == 0:
-        print("Bib data file did not contain valid records.", file=sys.stderr)
-        sys.exit(1)
-    return eg_records
+import marcaroni.ils
+import marcaroni.sources
 
 
 class OutputRecordHandler:
@@ -320,7 +217,7 @@ def match_input_files(input_files, bib_source_of_input, bibsources, eg_records, 
     :param input_files:
     :param bib_source_of_input:
     :param bibsources: BibSourceRegistry
-    :param eg_records:
+    :param eg_records: ILSBibData
     :param isbn_columns: str
     :param negate:
     :return:
@@ -463,9 +360,27 @@ def handle_special_actions_and_misc_reports(output_handler, matches, bib_source_
     generate_report_of_self_ddas_to_hide(output_handler, matches, bib_source_of_input, bibsources, marc_record)
 
 
+
 PredicateVector = namedtuple('PredicateVector', ['match_is_dda',
                                                  'match_is_same_platform',
                                                  'match_is_better_license'])
+
+
+def license_comparator(license_of_existing, license_of_input):
+    """
+    This function tells you if the incoming (input) license is better than the existing.
+    If so, we probably want to update the existing record to reflect the better license.
+    In particular, this affects records for purchased items - the perpetual access means
+    that the record should be "upgraded" if it were DDA or subscription.
+
+    :param license_of_existing:
+    :param license_of_input:
+    :return: True if Match is preferred, False if match is equal or lesser
+    """
+    if marcaroni.sources.KNOWN_LICENSES[license_of_existing] > marcaroni.sources.KNOWN_LICENSES[license_of_input]:
+        return True
+    else:
+        return False
 
 
 def compute_predicates_for_match(match, match_bib_source, bib_source_of_input, marc_record):
@@ -648,7 +563,7 @@ def get_match_field(bib_source):
 def process_input_file(eg_records, reader, output_handler, bib_source_of_input, bibsources, match_field):
     """
 
-    :type eg_records: dict[str, list[Record]]
+    :type eg_records: ILSBibData
     :type reader: MARCReader
     :type output_handler: OutputRecordHandler
     :type bib_source_of_input: BibSource
@@ -658,6 +573,11 @@ def process_input_file(eg_records, reader, output_handler, bib_source_of_input, 
     """
     records_processed_count = 0
     for marc_record in reader:
+
+        # Make into a Record object
+        # that.fix_leader()
+        # that.validate()
+
         # Convert record encoding to UTF-8 in leader. TODO: put in marc output handler.
         marc_record.leader = marc_record.leader[0:9] + 'a' + marc_record.leader[10:]
         records_processed_count += 1
@@ -669,7 +589,7 @@ def process_input_file(eg_records, reader, output_handler, bib_source_of_input, 
 
         # match_field = get_match_field(bib_source_of_input)
         matches = match_marc_record_against_bib_data(eg_records, marc_record, match_field)
-        # Matches is "False" if identifier not found; a set of matches (may be empty) otherwise.
+        # Matches is "False" if identifier not found in the marc record; a set of matches (may be empty) otherwise.
         if matches == False:
             print("UH OH! AT LEAST ONE RECORD EXISTS WITH NO %s identifier! at record no %d" % (match_field, records_processed_count), file=sys.stderr)
             output_handler.ambiguous(marc_record, "Record has no identifier in %s." % (match_field,))
@@ -703,17 +623,14 @@ def process_input_file(eg_records, reader, output_handler, bib_source_of_input, 
 bibsource_match_histogram = {}
 
 
-def match_marc_record_against_bib_data(eg_records, record, match_field):
+def extract_identifiers(record, match_field):
     """
 
-    :type eg_records: dict[str, list[Record]]
     :type record: pymarc.Record
     :type match_field: str
-    :return: bool or set
+    :return: list
     """
-    # Matches will contain matching existing records.
-    matches = set()
-    found_an_identifier = False
+    local_identifiers = set()
     # Loop over all fields and 'a','z' subfields.
     for f in record.get_fields(match_field):
         for subfield in ['a', 'z']:
@@ -732,12 +649,26 @@ def match_marc_record_against_bib_data(eg_records, record, match_field):
                     incoming_identifier = cleaned.strip()
                 # A valid identifier contains numbers.
                 if any(i.isdigit() for i in incoming_identifier) and len(incoming_identifier) > 7:
-                    found_an_identifier = True
-                if incoming_identifier in eg_records:
-                    matches |= set(eg_records[incoming_identifier])
-    if not found_an_identifier:
+                    local_identifiers.add(incoming_identifier)
+    if len(local_identifiers) == 0:
+        return False
+    return local_identifiers
+
+
+def match_marc_record_against_bib_data(eg_records, record, match_field):
+    """
+
+    :type eg_records: ILSBibData
+    :type record: pymarc.Record
+    :type match_field: str
+    :return: bool or set
+    """
+
+    incoming_identifiers = extract_identifiers(record, match_field)
+    if not incoming_identifiers:
         return False
 
+    matches = eg_records.match(incoming_identifiers)
     for match in matches:
         if match.source not in bibsource_match_histogram:
             bibsource_match_histogram[match.source] = 0
@@ -748,7 +679,7 @@ def match_marc_record_against_bib_data(eg_records, record, match_field):
 def parse_cmd_line():
     parser = optparse.OptionParser(usage="%prog [options] INPUT_FILE [ ... INPUT_FILE_N ]")
     parser.add_option("-d", "--bib-data", dest="bib_data", default="bib-data.txt",
-                      help="CSV file of Bib Data to use")
+                      help="CSV file of Bib Data to use. [default: %default]")
     parser.add_option("--bib-source-file", dest="bib_source_file", default=os.path.join(os.path.dirname(__file__), 'conf', 'bib_sources.csv'),
                       help="CSV file of Bib Sources to use. [default: %default]")
     parser.add_option("-s", "--bib-source", dest="bib_source",
@@ -771,18 +702,28 @@ def parse_cmd_line():
     return opts.bib_source_file, opts.bib_source, opts.bib_data, opts.excel, opts.negate, opts.match_field, args
 
 
+def prompt_for_bib_source(bibsources):
+    """
+
+    :param bibsources: BibSourceRegistry
+    :return:
+    """
+    response = input("Please enter the number of the bibsource. Or, enter the first few letters to look one up: ").strip()
+    while response not in bibsources:
+        suggestions = bibsources.autosuggest(response)
+        for s in suggestions:
+            print("{: <40}\t{}".format(s[0], s[1]))
+        response = input("Please enter the number of the bibsource. Or, enter the first few letters to look one up: ").strip()
+    return response
+
+
 def main():
     bib_source_file_name, bib_source, bib_data_file_name, excel, negate, match_field, input_files = parse_cmd_line()
 
-    # CONFIG:
-    bibsources = BibSourceRegistry()
+    bibsources = marcaroni.sources.BibSourceRegistry()
     bibsources.load_from_file(bib_source_file_name)
     if not bib_source:
-        bib_source = input("Please enter the number of the bibsource:").strip()
-
-    if bib_source not in bibsources:
-        print("Bib source [%s] is not known to Marc-a-roni." % (bib_source,), file=sys.stderr)
-        sys.exit(2)
+        bib_source = prompt_for_bib_source(bibsources)
     bib_source_of_input = bibsources.get_bib_source_by_id(bib_source)
     print("\nYou have chosen the [%s] Bib Source\n" % (bib_source_of_input.name,))
 
@@ -790,11 +731,13 @@ def main():
     mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(bib_data_file_name))
     print("File last modified: %s" % (mod_time))
     if mod_time < (datetime.datetime.now() - datetime.timedelta(hours=1)):
-        input("WARNING! Bib data is really old. Press a key to continue, or Ctrl-D to cancel ")
+        input("WARNING! Bib data is old. Press a key to continue, or Ctrl-D to cancel ")
 
     if not match_field:
         match_field = get_match_field(bib_source_of_input)
-    eg_records = load_bib_data(bib_data_file_name, match_field)
+
+    eg_records = marcaroni.ils.ILSBibData()
+    eg_records.load_from_file(bib_data_file_name, match_field)
 
     if excel:
         isbn_columns = input("Identifier (e.g. ISBN) column(s) separated by commas, counting from 0: ")

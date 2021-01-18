@@ -59,9 +59,8 @@ def dedupe(filename, key):
     with open(filename, 'rb') as handler:
         reader = MARCReader(handler, to_unicode=True, force_utf8=True)
         for record in reader:
-            #print(record['245']['a'])
-            already_found = []
-            found_values = []
+            found_values = [] # All identifier values in this record.
+            already_found = [] # List of booleans. Was this identifier previously found?
             id_fields = record.get_fields(key)
             if key == '856':
                 for f in id_fields:
@@ -82,6 +81,7 @@ def dedupe(filename, key):
             elif any(already_found):
                 print("Error: can't tell if dupe.")
                 output_handler.unsure(record)
+                registry |= set(found_values)
             else:
                 output_handler.deduped(record)
                 registry |= set(found_values)

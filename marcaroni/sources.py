@@ -38,6 +38,7 @@ class BibSourceRegistry:
     def __init__(self):
         self.bib_source_by_id = {}  # dict[str] = BibSource
         self.bib_source_by_platform = {}  # dict[str] = list[BibSource]
+        self.selected = None
 
     def _add_bib_source(self, bib_source):
         """Add a Bib Source to the registry.
@@ -61,6 +62,12 @@ class BibSourceRegistry:
                                                bib_license=row['license'].strip()))
 
     def get_bib_source_by_id(self, bib_source_id):
+        """
+        Get a bib source by numeric id
+
+        :type bib_source_id: int
+        :return BibSource:
+        """
         return self.bib_source_by_id[bib_source_id]
 
     def __contains__(self, item):
@@ -70,3 +77,27 @@ class BibSourceRegistry:
         options = [[x.name, x.id] for x in self.bib_source_by_id.values() if prompt.lower() in x.name.lower()]
         return sorted(options)
 
+    def set_selected(self, selected_id):
+        self.selected = self.bib_source_by_id[selected_id]
+
+    def other_sources_on_platform(self):
+        if not self.selected:
+            return False # Raise error?
+        selected_platform = self.selected.platform
+        source_ids = set([s.id for s in self.bib_source_by_id.values() if s.platform == selected_platform])
+        source_ids.remove(self.selected.id)
+        return source_ids
+
+    def get_match_field(self, bib_source_id = None):
+        if not bib_source_id:
+            if not self.selected:
+                return None
+            else:
+                bib_source_id = self.selected.id
+
+        if bib_source_id in ('68', '87', '67', '76', '66', '1', '93', '41', '48','49'):
+            return '035'
+        if bib_source_id in ('91'):
+            return '035'
+        else:
+            return '020'

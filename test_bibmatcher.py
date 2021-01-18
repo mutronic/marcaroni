@@ -1,10 +1,14 @@
+#!/usr/local/bin/python3
+
 import unittest
 
-
+import marcaroni.output
+import marcaroni.ils
+import marcaroni.sources
 import bibmatcher
 
 
-class MockOutputRecordHandler(bibmatcher.OutputRecordHandler):
+class MockOutputRecordHandler(marcaroni.output.OutputRecordHandler):
     # noinspection PyMissingConstructor
     def __init__(self):
         self.calls = []
@@ -38,18 +42,19 @@ class MyTestCase(unittest.TestCase):
         return MARCRecord()
 
     @staticmethod
-    def get_vectors(better_licensed=True, same_platform=False, length=3):
+    def get_vectors(better_licensed=True, same_platform=False, odd_bs=False, length=3):
         v = {}
         for i in range(length):
-            v[bibmatcher.Record(i, 1)] = bibmatcher.PredicateVector(
-                match_is_better_license=better_licensed,
-                match_is_dda=False,
-                match_is_same_platform=same_platform
+            v[marcaroni.ils.Record(i, '1')] = bibmatcher.PredicateVector(
+                match_is_better_license = better_licensed,
+                match_is_dda = False,
+                match_is_same_platform = same_platform,
+                match_is_odd_bibsource = odd_bs
             )
         return v
 
     def test_ignore_if_new_record_is_dda_and_better_is_available_input_not_dda(self):
-        input_bib_source = bibmatcher.BibSource(1, 'test', 'test_plat', 'purchased')
+        input_bib_source = marcaroni.sources.BibSource('1', 'test', 'test_plat', 'purchased')
         output = MockOutputRecordHandler()
 
         self.assertFalse(bibmatcher.ignore_if_new_record_is_dda_and_better_is_available(
@@ -60,7 +65,7 @@ class MyTestCase(unittest.TestCase):
         ))
 
     def test_ignore_if_new_record_is_dda_and_better_is_available_input_is_dda_better_is_avail(self):
-        input_bib_source = bibmatcher.BibSource(1, 'test', 'test_plat', 'dda')
+        input_bib_source = marcaroni.sources.BibSource('1', 'test', 'test_plat', 'dda')
         output = MockOutputRecordHandler()
 
         self.assertTrue(bibmatcher.ignore_if_new_record_is_dda_and_better_is_available(
@@ -73,7 +78,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(output.calls[0][0], 'ignore')
 
     def test_ignore_if_new_record_is_dda_and_better_is_available_input_is_dda_better_is_not_avail(self):
-        input_bib_source = bibmatcher.BibSource(1, 'test', 'test_plat', 'dda')
+        input_bib_source = marcaroni.sources.BibSource('1', 'test', 'test_plat', 'dda')
         output = MockOutputRecordHandler()
 
         self.assertFalse(bibmatcher.ignore_if_new_record_is_dda_and_better_is_available(
@@ -84,10 +89,10 @@ class MyTestCase(unittest.TestCase):
         ))
 
     def test_update_same_platform_match_if_unambiguous_no_same_plat_match(self):
-        input_bib_source = bibmatcher.BibSource(1, 'test', 'test_plat', 'dda')
+        input_bib_source = marcaroni.sources.BibSource('1', 'test', 'test_plat', 'dda')
         output = MockOutputRecordHandler()
 
-        self.assertFalse(bibmatcher.update_same_platform_match_if_unambiguous(
+        self.assertFalse(bibmatcher.handle_same_platform_matches(
             self.get_marc_record(),
             input_bib_source,
             self.get_vectors(),
@@ -95,10 +100,10 @@ class MyTestCase(unittest.TestCase):
         ))
 
     def test_update_same_platform_match_if_unambiguous_multiple_same_plat_match(self):
-        input_bib_source = bibmatcher.BibSource(1, 'test', 'test_plat', 'dda')
+        input_bib_source = marcaroni.sources.BibSource('1', 'test', 'test_plat', 'dda')
         output = MockOutputRecordHandler()
 
-        self.assertTrue(bibmatcher.update_same_platform_match_if_unambiguous(
+        self.assertTrue(bibmatcher.handle_same_platform_matches(
             self.get_marc_record(),
             input_bib_source,
             self.get_vectors(same_platform=True),
@@ -109,12 +114,12 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(output.calls[0][0], 'ambiguous')
 
     def test_update_same_platform_match_if_unambiguous_one_same_plat_match_with_worse(self):
-        input_bib_source = bibmatcher.BibSource(1, 'test', 'test_plat', 'dda')
+        input_bib_source = marcaroni.sources.BibSource('1', 'test', 'test_plat', 'dda')
         output = MockOutputRecordHandler()
         v = self.get_vectors(same_platform=True, better_licensed=False, length=1)
         v.update(self.get_vectors(same_platform=False, length=2))
 
-        self.assertTrue(bibmatcher.update_same_platform_match_if_unambiguous(
+        self.assertTrue(bibmatcher.handle_same_platform_matches(
             self.get_marc_record(),
             input_bib_source,
             v,
@@ -125,12 +130,12 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(output.calls[0][0], 'update')
 
     def test_update_same_platform_match_if_unambiguous_one_same_plat_match_with_better(self):
-        input_bib_source = bibmatcher.BibSource(1, 'test', 'test_plat', 'dda')
+        input_bib_source = marcaroni.sources.BibSource('1', 'test', 'test_plat', 'dda')
         output = MockOutputRecordHandler()
         v = self.get_vectors(same_platform=True, better_licensed=True, length=1)
         v.update(self.get_vectors(same_platform=False, length=2))
 
-        self.assertTrue(bibmatcher.update_same_platform_match_if_unambiguous(
+        self.assertTrue(bibmatcher.handle_same_platform_matches(
             self.get_marc_record(),
             input_bib_source,
             v,

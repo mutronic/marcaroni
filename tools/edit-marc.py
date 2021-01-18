@@ -47,10 +47,44 @@ def edit_035_for_curio(record):
         )
     )
 
+def edit_035_for_ASP(record):
+    asp_id = record['001'].value()
+    if '003' in record:
+        tcn_source = record['003'].value()
+    elif record['040']['a'] == "VaAlASP":
+        tcn_source = record['040']['a']
+    else:
+        tcn_source = record['040']['a']
+
+    # Check if there's an additional one in the 901 - different?
+    if '901' in record:
+        if record['901']['a'] != asp_id:
+            asp_id_2 = record['901']['a']
+
+    string = '({}){}'.format(tcn_source, asp_id)
+
+    # Need new 035?
+    f035 = record.get_fields('035')
+
+    # Only add the field if not present.
+    for f in f035:
+        if f['a'] == string:
+            print("already there: " + string)
+            return
+    record.add_ordered_field(
+        Field(
+            tag = '035',
+            indicators = [' ', ' '],
+            subfields = [
+                'a', string
+            ]
+        )
+    )
 
 ######### Change what gets done by adding or removing functions here. ##########
 RULES = [
-    edit_035_for_curio,
+    #edit_035_for_curio,
+    edit_035_for_ASP,
 ]
 ################################################################## fin ########
 

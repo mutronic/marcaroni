@@ -5,6 +5,7 @@
 # vim: shiftwidth=2:
 
 from marcaroni import db
+import re
 
 try:
     conn = db.connect()

@@ -26,7 +26,7 @@ id,name,platform,license
 61,T&F: Eng Hist Docs [Purchased],TandFEnghistdocs,purchased
 60,Sage: Purchased [Purchased],Sage,purchased
 59,ZZZ: Skeletal Records,various,purchased
-58,Wiley: All Purchases [Purchased],Wiley,purchased
+58,Wiley: All Purchases [Purchased],OCLC,purchased
 57,EBSCOhost: Business Source DB,Ebsco,subscription
 55,ebl-purch,Proquest,purchased
 53,DesLibris-subscription,Deslibris,subscription
@@ -51,7 +51,7 @@ id,name,platform,license
 24,ANSIplatform-sub,ANSI,purchased
 22,OpenAccess/Free,various,oa
 20,SpringerLink [Purchased],Springer,purchased
-19,ScienceDirect-purchased,ScienceDirect,purchased
+19,ScienceDirect-purchased,OCLC,purchased
 18,cdlib,cdlib,purchased
 17,knovel,knovel,purchased
 15,Oxford Various [Purchased],Oxford,purchased
@@ -66,4 +66,4 @@ id,name,platform,license
 5,MyiLibrary: CRKN Ingram deal [Purchased],Proquest,purchased
 4,"Pers and e-reses, PEIDB",local,purchased
 2,System Local,local,purchased
-1,oclc,OCLC,purchased
+1,oclc,OCLC,subscription

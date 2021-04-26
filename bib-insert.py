@@ -34,7 +34,7 @@ def load_marc_reader(filename):
         handler = open(filename, "rb")
         reader = MARCReader(handler, to_unicode=True, force_utf8=True)
     except Exception as e:
-        print("Error loading marc handler")
+        print("Error loading marc file")
         print("Exception: %s" % str(e))
         sys.exit(1)
     else:
@@ -64,7 +64,7 @@ def marc_record_to_xml_string(record):
     else:
         return marc
 
-def copy_marc_into_staging(conn, reader):
+def copy_marc_into_insert_staging(conn, reader):
     with conn.cursor() as cursor:
         record_string_iterator = db.StringIteratorIO(((marc_record_to_xml_string(record)) + '\n'
                                                        for record in reader))
@@ -163,7 +163,7 @@ if __name__ == '__main__':
         if not silent:
             print("Copying marc to staging database.")
             start_time = datetime.now()
-        copy_marc_into_staging(conn, reader)
+        copy_marc_into_insert_staging(conn, reader)
         if not silent:
             print("Records staged.")
             duration = datetime.now() - start_time

@@ -346,9 +346,7 @@ def match_input_files(input_files, bibsources, eg_records, isbn_columns, negate)
                 matches = set()
 
                 isbns = extract_identifiers_from_row(row, isbn_columns)
-                for isbn in isbns:
-                    if isbn in eg_records:
-                        matches |= set(eg_records[isbn]) # Union of sets.
+                matches = eg_records.match(isbns)
 
                 # Add to histogram.
                 for x in matches:
@@ -504,12 +502,12 @@ def process_mrc_file(eg_records, reader, output_handler, bib_source_of_input, bi
 
             done = False
             for rule in RULES:
-                if rule(marc_record, bib_source_of_input, predicate_vectors, output_handler):
+                if rule(record, bib_source_of_input, predicate_vectors, output_handler):
                     done = True
                     break
 
             if not done:
-                output_handler.ambiguous(marc_record, "One or more match but no rules matched.")
+                output_handler.ambiguous(record, "One or more match but no rules matched.")
 
     return records_processed_count
 

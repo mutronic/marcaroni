@@ -99,7 +99,7 @@ class OutputRecordHandler:
         self.records_without_matches_counter += 1
 
     def match_is_worse(self, marc_rec, bib_id):
-        marc_rec.add_field(Field(
+        marc_rec.marc.add_field(Field(
             tag='901',
             indicators=[' ', ' '],
             subfields=['c', bib_id]
@@ -108,7 +108,7 @@ class OutputRecordHandler:
         self.match_has_worse_license__counter += 1
 
     def exact_match(self, marc_rec, bib_id):
-        marc_rec.add_field(Field(
+        marc_rec.marc.add_field(Field(
             tag='901',
             indicators=[' ', ' '],
             subfields=['c', bib_id]

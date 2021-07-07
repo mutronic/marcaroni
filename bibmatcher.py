@@ -562,16 +562,19 @@ def main():
     if not bib_source_id:
         bib_source_id = prompt_for_bib_source(bibsources)
     bibsources.set_selected(bib_source_id)
-    print("\nYou have chosen the [%s] Bib Source\n" % (bibsources.selected.name,))
+    print("\nYou have chosen the [%s] Bib Source." % (bibsources.selected.name,))
+
+    if not match_field:
+        match_field = bibsources.get_match_field()
+        print("This bibsource matches on field: %s.\n" % (match_field))
+    else:
+        print("Matching on field: %s.\n" % (match_field))
 
     print("Loading records from %s" % (bib_data_file_name))
     mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(bib_data_file_name))
     print("File last modified: %s" % (mod_time))
     if mod_time < (datetime.datetime.now() - datetime.timedelta(hours=1)):
         input("WARNING! Bib data is old. Press a key to continue, or Ctrl-D to cancel ")
-
-    if not match_field:
-        match_field = bibsources.get_match_field()
 
     eg_records = marcaroni.ils.ILSBibData()
     eg_records.load_from_file(bib_data_file_name, match_field)

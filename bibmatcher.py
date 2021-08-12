@@ -247,8 +247,10 @@ def handle_same_platform_matches(marc_record, bib_source_of_input, predicate_vec
     if len(matches_on_this_platform) <= 0:
         return False
     if len(matches_on_this_platform) > 1:
-        data = '; '.join(m.id + ' (' + m.source + ')' for m in matches_on_this_platform)
-        output_handler.ambiguous(marc_record, "There are multiple matches on this platform. " + data)
+        data = [m.id + ' (' + m.source + ')' for m in matches_on_this_platform]
+        data.sort()
+        info = ' ; '.join(data)
+        output_handler.ambiguous(marc_record, "There are multiple matches on this platform. " + info)
         return True
     single_match = matches_on_this_platform[0]
     if single_match.source == bib_source_of_input.id:
@@ -524,7 +526,7 @@ def parse_cmd_line():
                       help="Instead of a .mrc file, the input is a CSV file. Output will be a modified CSV file..")
     parser.add_option("-n", "--negate", action="store_true", dest="negate", default=False,
                       help="For an excel report, find matches NOT in a specific bibsource.")
-    parser.add_option("-m", "--match-field", action="store_true", dest="match_field", default=False,
+    parser.add_option("-m", "--match-field", dest="match_field", default='',
                       help="Marc tag to use as identifier. Options are '020' or '035'. Default depends on bibsource.")
     opts, args = parser.parse_args()
 

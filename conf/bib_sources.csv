@@ -4,13 +4,12 @@ id,name,platform,license
 93,Audio Cine,Audio Cine,subscription
 92,Cambridge: Purchased,Cambridge,purchased
 91,Proquest Video AVON + Nursing [sub],Proquest,subscription
-90,Hidden-dda,Safari,dda
+90,Hidden-dda safari,Safari,dda
 89,SpringerLink: EBA [EBA],Springer,eba
 87,Kanopy [DDA],Kanopy,dda
 86,ProjectMuse: EBA [EBA],ProjectMuse,eba
 85,Sage: Knowledge Books&Ref [EBA],Sage,eba
 83,T&F: Spendouts [Purchased],TandF,purchased
-79,ASME-sub,unknown,purchased
 78,PrintDDA Purchased,local,purchased
 76,NFB/ONF: NFB Campus [Subscription],NFB,subscription
 75,ScholarsPortal: ACUP CRKN [Purchased],ScholarsPortal,purchased
@@ -19,8 +18,8 @@ id,name,platform,license
 72,duke-purchased,Duke,purchased
 71,Proquest: Academic [Subscription],Proquest,subscription
 70,T&F: CRKN Ingram(?) deal [Purchased],TandF,purchased
+69,JOVE: [Subscription],Jove,subscription
 67,Curio.ca [Subscription],Curio,subscription
-66,Films On Demand [Subscription],FOD,subscription
 65,credoreference-purchased,Credo,purchased
 62,Oxford Scholarship [Purchased],Oxford,purchased
 61,T&F: Eng Hist Docs [Purchased],TandFEnghistdocs,purchased
@@ -36,17 +35,14 @@ id,name,platform,license
 46,ProjectMuse: Purchased [Purchased],ProjectMuse,purchased
 45,PopUp PEI Public Library,local,purchased
 44,desLibris: PurchasedCRKN,Deslibris,purchased
-43,Hidden DDA,various,dda
 41,CriterionOnDemand [Subscription],Criterion,subscription
 40,O'Reilly Academic [Subscription],O'Reilly,subscription
-38,Cambridge-eba,Cambridge,eba
+38,Cambridge: EBA,Cambridge,eba
 37,Jstor: DDA frontfile [DDA],OCLC,dda
-36,CABI2008-frontfile,CABI,subscription
-35,CABI2005-2007,CABI,purchased
+36,CABI: Front File [Subscription],CABI,subscription
+35,CABI: Backfile 2005- [Purchased],CABI,purchased
 32,ProquestDiss-purch,Proquest,purchased
 29,intelex20100216,Intelex,purchased
-26,MyiLibrary: CRKN Ingram deal 20100810 [Purchased],Proquest,purchased
-24,ANSIplatform-sub,ANSI,purchased
 22,OpenAccess/Free,various,oa
 20,SpringerLink [Purchased],Springer,purchased
 19,ScienceDirect-purchased,OCLC,purchased

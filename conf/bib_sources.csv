@@ -10,10 +10,8 @@ id,name,platform,license
 86,ProjectMuse: EBA [EBA],ProjectMuse,eba
 85,Sage: Knowledge Books&Ref [EBA],Sage,eba
 83,T&F: Spendouts [Purchased],TandF,purchased
-81,Internal E-DDA,various,dda
 79,ASME-sub,unknown,purchased
-78,PrintDDA [dda],local,purchased
-77,PrintDDA,local,dda
+78,PrintDDA Purchased,local,purchased
 76,NFB/ONF: NFB Campus [Subscription],NFB,subscription
 75,ScholarsPortal: ACUP CRKN [Purchased],ScholarsPortal,purchased
 74,AccessEngineering-sub,AccessEngineering,purchased

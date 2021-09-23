@@ -472,6 +472,10 @@ def process_mrc_file(eg_records, reader, output_handler, bib_source_of_input, bi
         # Convert record encoding to UTF-8 in leader.
         marc_record.leader = marc_record.leader[0:9] + 'a' + marc_record.leader[10:]
 
+        # Ensure record has title. Warn if not.
+        if record.title == '<>.':
+            print("WARNING: <>. as a title found! at record no {}".format( str(records_processed_count)), file=sys.stderr)
+
         # Ensure record has 856. Exit if not.
         if not record.verify_856():
             print("ERROR: NO 856 IN RECORD #[{}], Title: [{}]".format(str(records_processed_count),record.title), file=sys.stderr)

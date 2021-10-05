@@ -265,7 +265,7 @@ def handle_same_platform_matches(marc_record, bib_source_of_input, predicate_vec
 
 RULES = [
     #ambiguous_if_matches_on_ambiguous_bibsource,
-    #ignore_depending_on_publisher,
+    ignore_depending_on_publisher,
     ignore_if_new_record_is_dda_and_better_is_available,
     update_same_dda_record_if_unambiguous,
     mark_as_ambiguous_new_record_is_dda_and_better_is_not_available,

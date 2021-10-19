@@ -165,9 +165,10 @@ def ignore_depending_on_publisher(marc_record, bib_source_of_input, predicate_ve
     pub_tags = ['264', '260']
     for tag in pub_tags:
       for f in marc_record.marc.get_fields(tag):
-        if f['b'] & f['b'].startswith('Nova Science'):
-            output_handler.match_is_better(marc_record)
-            return True
+        if f['b']:
+            if f['b'].startswith('Nova Science'):
+                output_handler.match_is_better(marc_record)
+                return True
     return False
 
 

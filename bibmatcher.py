@@ -488,6 +488,9 @@ def process_mrc_file(eg_records, reader, output_handler, bib_source_of_input, bi
             output_handler.ambiguous(record, "Record has no identifier in {}.".format(match_field,))
             continue
 
+        if ignore_depending_on_publisher(record, bib_source_of_input, {}, output_handler):
+            continue
+
         # Calculate Matches
         matches = eg_records.match(record.identifiers)
         output_handler.count_matches_by_bibsource(matches)

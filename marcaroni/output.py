@@ -32,7 +32,7 @@ class OutputRecordHandler:
         # Output file for incoming records with one match on the platform, having the same bibsource.
         self.exact_match__file_name = os.path.join(prefix, bibsource_prefix + "_exact_match_same_bibsource.mrc")
         self.exact_match__file_pointer = open(self.exact_match__file_name, "wb")
-        self.exact_match_ids__file_name = os.path.join(prefix, bibsource_prefix + "_exact_match_ids.txt")
+        self.exact_match_ids__file_name = os.path.join(prefix, "exact_match_ids.txt")
         self.exact_match_ids__file_pointer = open(self.exact_match_ids__file_name, "w")
         self.exact_match__counter = 0
 
@@ -72,6 +72,7 @@ class OutputRecordHandler:
         self.exact_match_ids__file_pointer.close()
         self.match_has_better_license__file_pointer.close()
         self.ambiguous__file_pointer.close()
+        self.ambiguous_report__file_pointer.close()
 
         # Deprecated - I hope.
         self.ddas_to_hide_report_fp.close()

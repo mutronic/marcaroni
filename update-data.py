@@ -35,13 +35,15 @@ else:
           identifier = identifier.split('(')[0]
           identifier = identifier.split('\\')[0]
           ## If ISBN is the wrong length, warn but don't break
-          if len(identifier) != 10 and len(identifier) != 13:
-            #print("We probably have not found a good isbn here: " + cleaned)
-            errors.write(','.join(map(str,row)))
-            errors.write('\n')
+          # if len(identifier) != 10 and len(identifier) != 13:
+            ## print("We probably have not found a good isbn here: " + cleaned)
+            # errors.write(','.join(map(str,row)))
+            # errors.write('\n')
           ## Only consider matchable isbns strings that are between 9 and 14 chars.
           if len(identifier) < 9 or len(identifier) > 14:
               continue
+      elif str(row[3]) == '856':
+          identifier = re.sub(r'.* ca login url ','',identifier)
       else:
           if not any(i.isdigit() for i in identifier):
               continue

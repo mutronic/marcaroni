@@ -1,6 +1,8 @@
 id,name,platform,license
-99,T&F: EBA,TandF,eba
-98,Wolters Kluwer-Ovid [Purchased],Ovid,purchased
+101,T&F: EBA,TandF,eba
+100,Wolters Kluwer-Ovid [Purchased],Ovid,purchased
+99,Course materials module,local,purchased
+98,De Gruyter [Trial],De Gruyter,subscription
 97,IGI: Purchased,IGI,purchased
 96,IGI: EBA,IGI,eba
 95,AVON-Alexander Street [Purchased],Proquest,purchased

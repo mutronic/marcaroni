@@ -31,6 +31,6 @@ The results are a folder containing several marc files. These are a partition of
 
 ### Excel (CSV) processing
 
-To process a csv file, such as a title list, run `bibmatcher.py` with the -x option. You will be prompted for the columns containing identifiers. For example, Proquest title lists include ISBNs in the second and third column, so you would enter `2,3` and hit the Enter key. 
+To process a csv file, such as a title list, run `bibmatcher.py` with the -x option. You will be prompted for the columns containing identifiers. For example, Proquest title lists include ISBNs in the third and fourth column, so you would enter `2,3` and hit the Enter key. 
 
 The result will be another CSV file, with `-matched` appended to the original filename. The first column of the output CSV will contain either 'NULL' if no match on that bibsource was found, the bib id of the matching record if a single match on that bibsource was found, and 'multi:{}' if multiple records that matched were found in that same bibsource.

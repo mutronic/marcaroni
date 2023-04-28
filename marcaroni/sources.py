@@ -95,7 +95,7 @@ class BibSourceRegistry:
             else:
                 bib_source_id = self.selected.id
 
-        if bib_source_id in ('68', '87', '67', '76', '66', '1', '93', '41', '48', '49', '40', '71', '40', '22', '37', '102'):
+        if bib_source_id in ('68', '87', '67', '76', '66', '1', '93', '41', '48', '49', '40', '71', '40', '22', '37', '102', '106'):
             return '035'
         if bib_source_id in ('91'):
             return '035'
